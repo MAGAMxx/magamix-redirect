@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
     <body>
       <h1>${CONFIG.HAPP_NAME}</h1>
       <p>Используйте Telegram бота для подписки:</p>
-      <a href="https://t.me/${process.env.BOT_USERNAME || 'your_bot'}" class="btn">📱 Открыть бот</a>
+      <a href="https://t.me/${process.env.BOT_USERNAME || 'MAGAMIX_VPN_bot'}" class="btn">📱 Открыть бот</a>
     </body>
     </html>
   `);
