@@ -1,12 +1,12 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const fetch = require('node-fetch'); // ← добавь в package.json: "node-fetch": "^2.6.7"
+const fetch = require('node-fetch'); // Обязательно добавь в package.json: "node-fetch": "^2.6.7"
 
 const app = express();
 
-// Rate Limit
+// Rate Limit — защита от спама
 const limiter = rateLimit({
-  windowMs: 60 * 1000,
+  windowMs: 60 * 1000, // 1 минута
   max: 45,
   message: { error: "Слишком много запросов. Попробуйте позже" },
   standardHeaders: true,
@@ -23,7 +23,7 @@ const CONFIG = {
   WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
 };
 
-// Главная страница (оставил без изменений)
+// Главная страница (оставлена как была)
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -64,7 +64,7 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Основной эндпоинт подписки — plain text + реальный UUID из API
+// Главный эндпоинт подписки — plain text + РЕАЛЬНЫЙ UUID из Flask API
 app.get('/sub/:subId', async (req, res) => {
   const subId = (req.params.subId || '').trim();
 
@@ -77,21 +77,22 @@ app.get('/sub/:subId', async (req, res) => {
 
   try {
     // Запрос реального UUID из твоего Flask API
-    // Замени URL на адрес твоего бота (если на Render — https://твой-бот.onrender.com/get_uuid)
-    const apiUrl = `http://localhost:8000/get_uuid?sub_id=${subId}`; // ← если бот и Render на одном сервере
-    // Или: const apiUrl = `https://твой-бот.onrender.com/get_uuid?sub_id=${subId}`;
-    
+    // Если бот на Render — замени на https://твой-бот.onrender.com/get_uuid
+    // Если бот локально или на другом сервере — укажи его публичный URL
+    const apiUrl = `http://localhost:8000/get_uuid?sub_id=${subId}`; // ← для теста локально
+    // const apiUrl = `https://твой-бот.onrender.com/get_uuid?sub_id=${subId}`; // ← для продакшена
+
     const response = await fetch(apiUrl);
     const data = await response.json();
 
-    let realUuid = "00000000-0000-0000-0000-000000000000"; // fallback на заглушку
+    let realUuid = "00000000-0000-0000-0000-000000000000"; // fallback на случай ошибки API
     if (!data.error && data.uuid) {
       realUuid = data.uuid;
     } else {
-      console.error('Не удалось получить UUID:', data.error || 'Нет ответа');
+      console.error('Не удалось получить UUID из API:', data.error || 'Нет ответа');
     }
 
-    // Текущая дата + срок (заглушка 90 дней)
+    // Заглушка на срок (90 дней) — потом заменишь на реальный из базы
     const now = new Date();
     const expireDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
     const expireFormatted = expireDate.toISOString().split('T')[0];
@@ -125,12 +126,12 @@ ${vlessLink}
 
     res.send(textResponse);
   } catch (err) {
-    console.error('[SUB ERROR]', err);
+    console.error('[SUB ERROR]', err.message);
     res.status(500).send('Server error');
   }
 });
 
-// Обёртка для Happ deeplink (оставил как было)
+// Обёртка для Happ deeplink
 app.get('/url', (req, res) => {
   const happUrl = req.query.url;
   if (happUrl && happUrl.startsWith('happ://add/')) {
