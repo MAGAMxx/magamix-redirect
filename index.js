@@ -135,7 +135,7 @@ app.get('/sub/:subId', (req, res) => {
         port: 2096, // ваш порт
         uuid: "generate-this-dynamically", // будет заменено в Happ
         security: "reality",
-        remark: "MAGAMIX | Нидерланды", 
+        remark: "Нидерланды", 
         config: "vless://..."
       }
     ]
