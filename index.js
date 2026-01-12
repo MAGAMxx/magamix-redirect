@@ -1,14 +1,12 @@
 const express = require('express');
-const { randomUUID } = require('crypto');
 const app = express();
-const PORT = process.env.PORT || 3000;;
 
-// Конфигурация VPN
+// Конфигурация
 const CONFIG = {
   HAPP_NAME: "MAGAMIX VPN",
   HAPP_LOGO: "https://cdn-icons-png.flaticon.com/512/3067/3067256.png",
-  SERVER_LOCATION: "Нидерланды",
-  SUPPORT_URL: "https://t.me/MAGAMIX_support",
+  SERVER_LOCATION: "Reality NL-trial",
+  SUPPORT_URL: "https://t.me/nejnayatp3",
   WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
 };
 
@@ -79,7 +77,7 @@ app.get('/', (req, res) => {
       <img src="${CONFIG.HAPP_LOGO}" alt="${CONFIG.HAPP_NAME}" class="logo">
       <h1>${CONFIG.HAPP_NAME}</h1>
       <h2>${CONFIG.SERVER_LOCATION}</h2>
-      
+     
       <div class="info">
         <h3>🚀 Premium VPN Service</h3>
         <p>• Высокая скорость и стабильность</p>
@@ -87,12 +85,12 @@ app.get('/', (req, res) => {
         <p>• Неограниченный трафик</p>
         <p>• Поддержка 24/7</p>
       </div>
-      
+     
       <p>Используйте бота для получения подписки:</p>
       <a href="https://t.me/${process.env.BOT_USERNAME || 'MAGAMIX_VPN_bot'}" class="btn">
         📱 Открыть Telegram бота
       </a>
-      
+     
       <div style="margin-top: 40px; font-size: 0.9rem; opacity: 0.8;">
         <p>© ${new Date().getFullYear()} ${CONFIG.HAPP_NAME}</p>
         <p>Техподдержка: <a href="${CONFIG.SUPPORT_URL}" style="color: white;">${CONFIG.SUPPORT_URL}</a></p>
@@ -102,37 +100,23 @@ app.get('/', (req, res) => {
   `);
 });
 
-const subscriptions = {};
-
 // Endpoint для подписок Happ (возвращает JSON конфигурацию)
 app.get('/sub/:subId', (req, res) => {
   const subId = req.params.subId;
-  const now = Date.now();
+  const currentTime = Date.now();
 
-  // Если подписка ещё не создана — генерируем
-  if (!subscriptions[subId]) {
-    subscriptions[subId] = {
-      uuid: randomUUID(),
-      created: now,
-      expire: now + 30 * 24 * 60 * 60 * 1000 // 30 дней
-    };
-  }
-
-  const sub = subscriptions[subId];
-
-  // JSON, который Happ примет и покажет только имя VPN
-  const response = {
-    name: CONFIG.HAPP_NAME,
+  const config = {
+    name: "MAGAMIX VPN",
     logo: CONFIG.HAPP_LOGO,
     version: "1.0",
     subscription: {
       id: subId,
-      name: CONFIG.HAPP_NAME,
-      created: sub.created,
-      updated: sub.created,
-      expire: sub.expire,
-      time_left: sub.expire - now,
-      info: `${CONFIG.SERVER_LOCATION} | Premium`
+      name: "MAGAMIX VPN",
+      expire: currentTime + (30 * 24 * 60 * 60 * 1000),
+      time_left: 30 * 24 * 60 * 60 * 1000,
+      created: currentTime,
+      updated: currentTime,
+      info: "Нидерланды | Premium"
     },
     metadata: {
       provider: CONFIG.HAPP_NAME,
@@ -143,19 +127,18 @@ app.get('/sub/:subId', (req, res) => {
     servers: [
       {
         id: 1,
-        name: CONFIG.SERVER_LOCATION,
+        name: "Нидерланды",
         type: "vless",
-        address: "31.130.131.214", // IP сервера, Happ не показывает
+        address: "31.130.131.214",
         port: 2096,
-        uuid: sub.uuid, // уникальный для каждой подписки
+        uuid: "generate-this-dynamically",
         security: "reality",
-        remark: CONFIG.SERVER_LOCATION,
-        config: `vless://${sub.uuid}@31.130.131.214:2096?security=reality&flow=xtls-rprx-vision&encryption=none&type=tcp#${CONFIG.HAPP_NAME}`
+        remark: "MAGAMIX VPN | Нидерланды",
+        config: "vless://..."
       }
     ]
   };
 
-  // Заголовки для Happ
   res.set({
     'Content-Type': 'application/json; charset=utf-8',
     'X-Subscription-Name': CONFIG.HAPP_NAME,
@@ -164,15 +147,20 @@ app.get('/sub/:subId', (req, res) => {
     'Access-Control-Allow-Origin': '*'
   });
 
-  res.json(response);
+  res.json(config);
+});
+
+// Редирект на 3X-UI панель
+app.get('/connect/:code', (req, res) => {
+  const code = req.params.code;
+  res.redirect(302, `https://31.130.131.214:2096/sub/${code}`);
 });
 
 // Обёртка для Happ deeplink
 app.get('/url', (req, res) => {
   const happUrl = req.query.url;
-  
+
   if (happUrl && happUrl.startsWith('happ://add/')) {
-    // Возвращаем HTML страницу с редиректом
     res.send(`
       <!DOCTYPE html>
       <html>
@@ -237,8 +225,8 @@ app.get('/url', (req, res) => {
 
 // Health check для Render
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     service: CONFIG.HAPP_NAME,
     timestamp: new Date().toISOString()
   });
@@ -274,7 +262,7 @@ app.use((req, res) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`
   🚀 ${CONFIG.HAPP_NAME} запущен на порту ${port}
   📍 ${CONFIG.SERVER_LOCATION}
