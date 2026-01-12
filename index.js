@@ -106,30 +106,35 @@ const axios = require('axios');
 app.get('/sub/:subId', async (req, res) => {
   try {
     const subId = req.params.subId;
+    
+    // Запрашиваем данные напрямую из вашей панели 3x-UI
+    const panelUrl = `31.130.131.214{subId}`;
+    const response = await fetch(panelUrl);
 
-  // 1. Формируем заголовки, которые HAPP считывает для названия
-    const response = await axios.get(`127.0.0.1{subId}`, {
-      responseType: 'text'
-    });
+    if (!response.ok) {
+      throw new Error(`Панель ответила кодом: ${response.status}`);
+    }
 
-    const vpnLinks = response.data;
+    const vpnLinks = await response.text();
 
-    // 2. Устанавливаем заголовки, чтобы HAPP увидел название
+    // Устанавливаем заголовки для HAPP, чтобы отображалось имя
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
-      'profile-title': CONFIG.HAPP_NAME, 
+      'profile-title': CONFIG.HAPP_NAME,
       'X-Subscription-Name': CONFIG.HAPP_NAME,
-      'Subscription-Userinfo': response.headers['subscription-userinfo'] || '',
+      'Subscription-Userinfo': response.headers.get('subscription-userinfo') || '',
       'Access-Control-Allow-Origin': '*'
     });
 
+    // Формируем ответ: метка с именем + сами конфиги
+    // Это гарантирует отображение "MAGAMIX VPN" вместо домена
     const finalResponse = `#profile-title: ${CONFIG.HAPP_NAME}\n${vpnLinks}`;
 
     res.send(finalResponse);
 
   } catch (error) {
-    console.error('Ошибка получения подписки:', error.message);
-    res.status(500).send('Ошибка сервера подписок');
+    console.error('Ошибка:', error.message);
+    res.status(500).send('Ошибка при получении подписки');
   }
 });
     
