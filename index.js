@@ -3,7 +3,7 @@ const app = express();
 
 app.get('/connect/:code', (req, res) => {
   const code = req.params.code;
-  res.redirect(302, `http://31.130.131.214/sub/${code}`);
+  res.redirect(302, `https://31.130.131.214:2096/sub/${code}`);  // ← https + порт 2096
 });
 
 app.get('/', (req, res) => {
