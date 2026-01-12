@@ -82,16 +82,16 @@ app.get('/', (req, res) => {
 
 // Основной эндпоинт подписки — plain text + реальный UUID из Flask API
 app.get('/sub/:subId', async (req, res) => {
-  const subId = (req.params.subId || '').trim();;
+  const subId = (req.params.subId || '').trim();
 
   console.log(`[SUB] Запрос подписки: subId="${subId}" (длина=${subId.length})`);
 
-  // Минимальная защита
   if (subId.length < 8 || !/^[0-9a-fA-F]+$/.test(subId)) {
     return res.status(400).send('Invalid subscription ID');
   }
 
   try {
+    // Получаем реальный UUID из Flask API
     const apiUrl = `http://31.130.131.214:8000/get_uuid?sub_id=${subId}`;
     const response = await fetch(apiUrl);
     const data = await response.json();
@@ -99,40 +99,48 @@ app.get('/sub/:subId', async (req, res) => {
     let realUuid = "00000000-0000-0000-0000-000000000000";
     if (!data.error && data.uuid) {
       realUuid = data.uuid;
+    } else {
+      console.error('Не удалось получить UUID:', data.error || 'Нет ответа');
     }
 
-    // Заглушка на срок (90 дней) — потом подключишь реальный из базы
+    // Реальный срок (заглушка 90 дней — потом заменишь на данные из базы)
     const now = Date.now();
-    const expireTime = now + 90 * 24 * 60 * 60 * 1000; // ms
-    const expireFormatted = new Date(expireTime).toISOString().split('T')[0];
-    const username = `MAGAMIX_${subId.slice(0, 8)}`;
+    const expireTime = now + 90 * 24 * 60 * 60 * 1000; // в миллисекундах
 
-    // VLESS-ссылка с РЕАЛЬНЫМ UUID
-    const vlessLink = `vless://${realUuid}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#%F0%9F%87%B3%F0%9F%87%B1%20%D0%9D%D0%B8%D0%B4%D0%B5%D1%80%D0%BB%D0%B0%D0%BD%D0%B4%D1%8B`;
+    // JSON-конфиг для Happ (это то, что он ожидает)
+    const config = {
+      "name": "MAGAMIX NL Premium 🇳🇱",
+      "expire": expireTime,                // ← дата истечения в ms (Happ покажет таймер)
+      "traffic": {
+        "total": 0,                        // 0 = Unlimited
+        "used": 0                          // использованный трафик (можно потом подтягивать)
+      },
+      "outbounds": [
+        {
+          "protocol": "vless",
+          "address": "31.130.131.214",
+          "port": 2053,
+          "uuid": realUuid,
+          "security": "reality",
+          "sni": "www.bing.com",
+          "fp": "chrome",
+          "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
+          "sid": "9864",
+          "flow": "",
+          "remark": "🇳🇱Нидерланды"
+        }
+      ]
+    };
 
-    const textResponse = `
-MAGAMIX NL Premium 🇳🇱
-
-Username: ${username}
-Status: active
-Traffic: Unlimited
-Expiration: ${expireFormatted} (90 дней)
-
-Remark: 🇳🇱Нидерланды - MAGAMIX VPN
-Location: Netherlands
-
-VLESS Link:
-${vlessLink}
-
-Скопируй ссылку выше и добавь в Happ.
-    `.trim();
+    // Кодируем в base64 — это и есть ответ для Happ
+    const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
 
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
-      'X-Subscription-Name': 'MAGAMIX VPN',
       'Cache-Control': 'no-cache, no-store, must-revalidate'
     });
 
+    // Отправляем ТОЛЬКО base64-строку — без лишнего текста!
     res.send(base64Config);
   } catch (err) {
     console.error('[SUB ERROR]', err.message);
