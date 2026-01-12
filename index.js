@@ -1,21 +1,18 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const fetch = require('node-fetch'); // ← добавь в package.json: "node-fetch": "^2.6.7"
 
 const app = express();
 
-// ───────────────────────────────────────────────
-// Rate Limit: 45 запросов в минуту на один IP
-// ───────────────────────────────────────────────
+// Rate Limit
 const limiter = rateLimit({
-  windowMs: 60 * 1000,           // 1 минута
+  windowMs: 60 * 1000,
   max: 45,
   message: { error: "Слишком много запросов. Попробуйте позже" },
   standardHeaders: true,
   legacyHeaders: false,
 });
-
 app.use('/sub/', limiter);
-app.use('/servers/', limiter);
 
 // Конфигурация
 const CONFIG = {
@@ -26,7 +23,7 @@ const CONFIG = {
   WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
 };
 
-// Главная страница
+// Главная страница (оставил без изменений)
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -36,54 +33,19 @@ app.get('/', (req, res) => {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${CONFIG.HAPP_NAME} • ${CONFIG.SERVER_LOCATION}</title>
       <style>
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          max-width: 900px;
-          margin: 0 auto;
-          padding: 30px 20px;
-          text-align: center;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-        }
-        .logo { width: 120px; height: 120px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); margin-bottom: 24px; }
-        h1 { font-size: 2.8rem; margin: 0 0 12px; }
-        h2 { font-size: 1.6rem; opacity: 0.9; margin: 0 0 40px; }
-        .features {
-          background: rgba(255,255,255,0.15);
-          backdrop-filter: blur(10px);
-          padding: 24px;
-          border-radius: 20px;
-          margin: 30px 0;
-          text-align: left;
-          max-width: 600px;
-          margin-left: auto;
-          margin-right: auto;
-        }
-        .btn {
-          display: inline-block;
-          background: white;
-          color: #4f46e5;
-          padding: 16px 36px;
-          border-radius: 50px;
-          text-decoration: none;
-          font-weight: bold;
-          font-size: 1.2rem;
-          margin: 12px;
-          box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-          transition: all 0.3s;
-        }
-        .btn:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.4); }
+        body { font-family: system-ui, sans-serif; max-width:900px; margin:0 auto; padding:30px 20px; text-align:center; background:linear-gradient(135deg,#667eea,#764ba2); color:white; min-height:100vh; display:flex; flex-direction:column; justify-content:center; }
+        .logo { width:120px; height:120px; border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.4); margin-bottom:24px; }
+        h1 { font-size:2.8rem; margin:0 0 12px; }
+        h2 { font-size:1.6rem; opacity:0.9; margin:0 0 40px; }
+        .features { background:rgba(255,255,255,0.15); backdrop-filter:blur(10px); padding:24px; border-radius:20px; margin:30px 0; text-align:left; max-width:600px; margin-left:auto; margin-right:auto; }
+        .btn { display:inline-block; background:white; color:#4f46e5; padding:16px 36px; border-radius:50px; text-decoration:none; font-weight:bold; font-size:1.2rem; margin:12px; box-shadow:0 8px 20px rgba(0,0,0,0.3); transition:all 0.3s; }
+        .btn:hover { transform:translateY(-4px); box-shadow:0 12px 30px rgba(0,0,0,0.4); }
       </style>
     </head>
     <body>
-      <img src="${CONFIG.HAPP_LOGO}" alt="${CONFIG.HAPP_NAME}" class="logo">
+      <img src="${CONFIG.HAPP_LOGO}" class="logo" alt="${CONFIG.HAPP_NAME}">
       <h1>${CONFIG.HAPP_NAME}</h1>
       <h2>${CONFIG.SERVER_LOCATION}</h2>
-
       <div class="features">
         <h3>🚀 Премиум VPN</h3>
         <p>• Максимальная скорость и стабильность</p>
@@ -91,119 +53,84 @@ app.get('/', (req, res) => {
         <p>• Безлимитный трафик</p>
         <p>• Поддержка 24/7</p>
       </div>
-
-      <p style="font-size: 1.2rem; margin: 40px 0 20px;">Получите подписку через бота:</p>
-      <a href="https://t.me/${process.env.BOT_USERNAME || 'MAGAMIX_VPN_bot'}" class="btn">
-        📱 Открыть бота
-      </a>
-
-      <div style="margin-top: 60px; font-size: 0.95rem; opacity: 0.85;">
+      <p style="font-size:1.2rem; margin:40px 0 20px;">Получите подписку через бота:</p>
+      <a href="https://t.me/${process.env.BOT_USERNAME || 'MAGAMIX_VPN_bot'}" class="btn">📱 Открыть бота</a>
+      <div style="margin-top:60px; font-size:0.95rem; opacity:0.85;">
         <p>© ${new Date().getFullYear()} ${CONFIG.HAPP_NAME}</p>
-        <p>Техподдержка: <a href="${CONFIG.SUPPORT_URL}" style="color: white; text-decoration: none;">${CONFIG.SUPPORT_URL.replace('https://', '')}</a></p>
+        <p>Техподдержка: <a href="${CONFIG.SUPPORT_URL}" style="color:white; text-decoration:none;">${CONFIG.SUPPORT_URL.replace('https://','')}</a></p>
       </div>
     </body>
     </html>
   `);
 });
 
-// ───────────────────────────────────────────────
-// /sub/:subId  →  Routing / Global profile для Happ
-// ───────────────────────────────────────────────
-app.get('/sub/:subId', (req, res) => {
+// Основной эндпоинт подписки — plain text + реальный UUID из API
+app.get('/sub/:subId', async (req, res) => {
   const subId = (req.params.subId || '').trim();
 
-  console.log(`[SUB] Запрос на subId: "${subId}" (длина: ${subId.length})`);
+  console.log(`[SUB] Запрос подписки: subId="${subId}" (длина=${subId.length})`);
 
-  // Минимальная защита (можно убрать для теста)
+  // Минимальная защита
   if (subId.length < 8 || !/^[0-9a-fA-F]+$/.test(subId)) {
     return res.status(400).send('Invalid subscription ID');
   }
 
-  // Текущая дата + срок (заглушка 90 дней, потом подключишь реальный из базы)
-  const now = new Date();
-  const expireDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-  const expireFormatted = expireDate.toISOString().split('T')[0]; // YYYY-MM-DD
+  try {
+    // Запрос реального UUID из твоего Flask API
+    // Замени URL на адрес твоего бота (если на Render — https://твой-бот.onrender.com/get_uuid)
+    const apiUrl = `http://localhost:8000/get_uuid?sub_id=${subId}`; // ← если бот и Render на одном сервере
+    // Или: const apiUrl = `https://твой-бот.onrender.com/get_uuid?sub_id=${subId}`;
+    
+    const response = await fetch(apiUrl);
+    const data = await response.json();
 
-  const username = `MAGAMIX_${subId.slice(0, 8)}`; // красивое имя пользователя
+    let realUuid = "00000000-0000-0000-0000-000000000000"; // fallback на заглушку
+    if (!data.error && data.uuid) {
+      realUuid = data.uuid;
+    } else {
+      console.error('Не удалось получить UUID:', data.error || 'Нет ответа');
+    }
 
-  // Полный VLESS-линк (твой сервер)
-  const vlessLink = `vless://00000000-0000-0000-0000-${subId.slice(0,12).padEnd(12,'0')}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#Нидерланды%20🇳🇱%20MAGAMIX`;
+    // Текущая дата + срок (заглушка 90 дней)
+    const now = new Date();
+    const expireDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+    const expireFormatted = expireDate.toISOString().split('T')[0];
 
-  // Простой текст-формат как у Molniya
-  const textResponse = `
-MAGAMIX VPN - Premium NL
+    const username = `MAGAMIX_${subId.slice(0, 8)}`;
 
-Username: MAGAMIX_${subId.slice(0,8)}
+    // VLESS-ссылка с РЕАЛЬНЫМ UUID
+    const vlessLink = `vless://${realUuid}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#Нидерланды%20MAGAMIX`;
+
+    const textResponse = `
+MAGAMIX NL Premium 🇳🇱
+
+Username: ${username}
 Status: active
 Traffic: Unlimited
-Expiration: ${expireFormatted} (90 days left)
+Expiration: ${expireFormatted} (90 дней)
 
-Remark: MAGAMIX NL Premium
+Remark: Нидерланды MAGAMIX Premium
 Location: Netherlands
 
-VLESS:
+VLESS Link:
 ${vlessLink}
-`.trim();
-  
-  res.set('Content-Type', 'text/plain; charset=utf-8');
-  res.send(textResponse);
-  });
-// ───────────────────────────────────────────────
-// /servers/:subId  →  Список outbound серверов (Reality)
-// ───────────────────────────────────────────────
-app.get('/servers/:subId', (req, res) => {
-  const subId = req.params.subId.trim();
 
-  if (!/^[0-9a-fA-F]{16,64}$/.test(subId)) {
-    return res.status(400).json({
-      error: "invalid_format",
-      message: "subId должен быть hex-строкой длиной 16–64 символа"
+Скопируй ссылку выше и добавь в Happ.
+    `.trim();
+
+    res.set({
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
     });
+
+    res.send(textResponse);
+  } catch (err) {
+    console.error('[SUB ERROR]', err);
+    res.status(500).send('Server error');
   }
-
-  const now = Date.now();
-  const VALIDITY_DAYS = 90;
-  const expireTime = now + (VALIDITY_DAYS * 24 * 60 * 60 * 1000);
-
-  const servers = [
-    {
-      "tag": "magamix-reality-nl",
-      "type": "vless",
-      "server": "31.130.131.214",
-      "server_port": 2053,
-      "uuid": `00000000-0000-0000-0000-${subId.slice(0, 12).padEnd(12, '0')}`,
-      "flow": "",
-      "packet_encoding": "xudp",
-      "tls": {
-        "enabled": true,
-        "server_name": "www.bing.com",
-        "reality": {
-          "enabled": true,
-          "public_key": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-          "short_id": ["9864"]
-        }
-      },
-      "expire": expireTime,
-      "remark": "MAGAMIX • Нидерланды • Premium"
-    }
-  ];
-
-  res.set({
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'X-Subscription-Expire': expireTime.toString()
-  });
-
-  res.json(servers);
 });
 
-// Редирект на 3X-UI панель (оставляем на всякий случай)
-app.get('/connect/:code', (req, res) => {
-  const code = req.params.code;
-  res.redirect(302, `https://31.130.131.214:2096/sub/${code}`);
-});
-
-// Обёртка для Happ deeplink
+// Обёртка для Happ deeplink (оставил как было)
 app.get('/url', (req, res) => {
   const happUrl = req.query.url;
   if (happUrl && happUrl.startsWith('happ://add/')) {
@@ -215,7 +142,7 @@ app.get('/url', (req, res) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Открытие в Happ</title>
         <style>
-          body { font-family: system-ui, sans-serif; text-align:center; padding:60px; background:linear-gradient(135deg, #667eea, #764ba2); color:white; min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+          body { font-family:system-ui,sans-serif; text-align:center; padding:60px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; }
           .logo { width:90px; height:90px; border-radius:20px; margin-bottom:24px; }
           .loader { border:6px solid rgba(255,255,255,0.3); border-top:6px solid white; border-radius:50%; width:60px; height:60px; animation:spin 1.2s linear infinite; margin:40px auto; }
           @keyframes spin { 0% {transform:rotate(0deg);} 100% {transform:rotate(360deg);} }
