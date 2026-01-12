@@ -1,74 +1,60 @@
 const express = require('express');
-const axios = require('axios');
+const axios = require('axios'); // Не забудьте axios в package.json
 const app = express();
 
 const CONFIG = {
-  HAPP_NAME: "MAGAMIX VPN",
+  HAPP_NAME: "MAGAMIX VPN 🇳🇱",
   PANEL_IP: "31.130.131.214",
-  WEBSITE: "t.me/MAGAMIX_VPN_bot"
+  SUB_PORT: "2096",
+  BOT_URL: "t.me"
 };
 
-// 1. Исправленный эндпоинт для редиректа (убираем чувствительность к слэшу)
-app.get('/url', (req, res) => {
-  const targetUrl = req.query.url;
-  
-  if (!targetUrl) {
-    return res.status(400).send('Ошибка: Не передан параметр url');
-  }
-
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Запуск ${CONFIG.HAPP_NAME}</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <script>
-        window.onload = function() {
-          // Выполняем переход в HAPP
-          window.location.href = "${targetUrl}";
-          // Если через 3 секунды ничего не произошло, возвращаем в бота
-          setTimeout(function() {
-            window.location.href = "${CONFIG.WEBSITE}";
-          }, 3000);
-        };
-      </script>
-    </head>
-    <body style="background:#1a1a1a; color:white; display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif;">
-      <div style="text-align:center;">
-        <h2>Открываем ${CONFIG.HAPP_NAME}...</h2>
-        <p>Пожалуйста, подождите</p>
-      </div>
-    </body>
-    </html>
-  `);
-});
-
-// 2. Исправленный эндпоинт для подписки (чтобы HAPP видел ИМЯ)
+// Эндпоинт для подписки (чтобы HAPP видел ИМЯ)
 app.get('/sub/:subId', async (req, res) => {
   try {
     const { subId } = req.params;
-    const panelUrl = `http://${CONFIG.PANEL_IP}:2096/sub/${subId}`;
-    
-    const response = await axios.get(panelUrl, { responseType: 'text' });
+    // Тянем данные из 3X-UI по порту 2096
+    const response = await axios.get(`http://${CONFIG.PANEL_IP}:${CONFIG.SUB_PORT}/sub/${subId}`, { 
+      responseType: 'text',
+      timeout: 5000 
+    });
 
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
-      'profile-title': CONFIG.HAPP_NAME, // Для корректного имени в 2026 году
+      'profile-title': CONFIG.HAPP_NAME,
       'subscription-userinfo': response.headers['subscription-userinfo'] || '',
       'Access-Control-Allow-Origin': '*'
     });
 
-    // Отдаем имя первой строкой
+    // Отдаем имя первой строкой + конфиги
     res.send(`#profile-title: ${CONFIG.HAPP_NAME}\n${response.data}`);
-  } catch (error) {
-    console.error('Ошибка панели:', error.message);
-    res.status(404).send('Подписка не найдена или сервер недоступен');
+  } catch (e) {
+    res.status(404).send('Subscription Error');
   }
 });
 
-// Заглушка для главной
-app.get('/', (req, res) => res.send('MAGAMIX Redirect Service is Active'));
+// Эндпоинт для редиректа в 1 клик
+app.get('/url', (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.redirect(CONFIG.BOT_URL);
 
-const port = process.env.PORT || 3000;
-app.listen(port, '0.0.0.0', () => console.log(`Сервер запущен на порту ${port}`));
+  res.send(`
+    <html>
+      <body style="background:#000;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
+        <script>
+          window.onload = () => {
+            window.location.href = "${url}";
+            setTimeout(() => { window.location.href = "${CONFIG.BOT_URL}"; }, 3000);
+          };
+        </script>
+        <div style="text-align:center;">
+          <img src="cdn-icons-png.flaticon.com" width="80">
+          <h2>Открываем MAGAMIX VPN...</h2>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
+app.get('/', (req, res) => res.send('MAGAMIX Active'));
+app.listen(process.env.PORT || 3000);
