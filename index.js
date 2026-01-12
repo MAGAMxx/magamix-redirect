@@ -1,13 +1,15 @@
 const express = require('express');
+const { randomUUID } = require('crypto');
 const app = express();
+const PORT = process.env.PORT || 3000;;
 
-// Конфигурация
+// Конфигурация VPN
 const CONFIG = {
   HAPP_NAME: "MAGAMIX VPN",
-  HAPP_LOGO: "https://cdn-icons-png.flaticon.com/512/3067/3067256.png", // или другую иконку
-  SERVER_LOCATION: "Reality NL-trial",
-  SUPPORT_URL: "https://t.me/nejnayatp3",
-  WEBSITE: "https://t.me/your_bot_username"
+  HAPP_LOGO: "https://cdn-icons-png.flaticon.com/512/3067/3067256.png",
+  SERVER_LOCATION: "Нидерланды",
+  SUPPORT_URL: "https://t.me/MAGAMIX_support",
+  WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
 };
 
 // Главная страница
@@ -100,25 +102,37 @@ app.get('/', (req, res) => {
   `);
 });
 
+const subscriptions = {};
+
 // Endpoint для подписок Happ (возвращает JSON конфигурацию)
 app.get('/sub/:subId', (req, res) => {
   const subId = req.params.subId;
-  const currentTime = Date.now();
-  
-  // Здесь вы можете генерировать динамические данные
-  // Пока что используем стандартные значения
-  const config = {
-    name: "MAGAMIX VPN",
+  const now = Date.now();
+
+  // Если подписка ещё не создана — генерируем
+  if (!subscriptions[subId]) {
+    subscriptions[subId] = {
+      uuid: randomUUID(),
+      created: now,
+      expire: now + 30 * 24 * 60 * 60 * 1000 // 30 дней
+    };
+  }
+
+  const sub = subscriptions[subId];
+
+  // JSON, который Happ примет и покажет только имя VPN
+  const response = {
+    name: CONFIG.HAPP_NAME,
     logo: CONFIG.HAPP_LOGO,
     version: "1.0",
     subscription: {
       id: subId,
-      name: "MAGAMIX VPN",
-      expire: currentTime + (30 * 24 * 60 * 60 * 1000), // +30 дней от текущего времени
-      time_left: 30 * 24 * 60 * 60 * 1000, // 30 дней в миллисекундах
-      created: currentTime,
-      updated: currentTime,
-      info: "Нидерланды | Premium"
+      name: CONFIG.HAPP_NAME,
+      created: sub.created,
+      updated: sub.created,
+      expire: sub.expire,
+      time_left: sub.expire - now,
+      info: `${CONFIG.SERVER_LOCATION} | Premium`
     },
     metadata: {
       provider: CONFIG.HAPP_NAME,
@@ -129,19 +143,19 @@ app.get('/sub/:subId', (req, res) => {
     servers: [
       {
         id: 1,
-        name: "Нидерланды",
+        name: CONFIG.SERVER_LOCATION,
         type: "vless",
-        address: "31.130.131.214", // ваш IP
-        port: 2096, // ваш порт
-        uuid: "generate-this-dynamically", // будет заменено в Happ
+        address: "31.130.131.214", // IP сервера, Happ не показывает
+        port: 2096,
+        uuid: sub.uuid, // уникальный для каждой подписки
         security: "reality",
-        remark: "Нидерланды", 
-        config: "vless://..."
+        remark: CONFIG.SERVER_LOCATION,
+        config: `vless://${sub.uuid}@31.130.131.214:2096?security=reality&flow=xtls-rprx-vision&encryption=none&type=tcp#${CONFIG.HAPP_NAME}`
       }
     ]
   };
 
-  // Устанавливаем правильные заголовки для Happ
+  // Заголовки для Happ
   res.set({
     'Content-Type': 'application/json; charset=utf-8',
     'X-Subscription-Name': CONFIG.HAPP_NAME,
@@ -150,24 +164,7 @@ app.get('/sub/:subId', (req, res) => {
     'Access-Control-Allow-Origin': '*'
   });
 
-  res.json(config);
-});
-
-// Редирект на 3X-UI панель (старый функционал)
-app.get('/connect/:code', async (req, res) => {
-  const code = req.params.code;
-  const target = `https://31.130.131.214:2096/sub/${code}`;
-
-  const response = await fetch(target);
-  const body = await response.text();
-
-  res.set({
-    'Content-Type': 'text/plain; charset=utf-8',
-    'X-Subscription-Name': 'MAGAMIX VPN',
-    'X-Subscription-Logo': 'https://cdn-icons-png.flaticon.com/512/3067/3067256.png'
-  });
-
-  res.send(body);
+  res.json(response);
 });
 
 // Обёртка для Happ deeplink
@@ -277,7 +274,7 @@ app.use((req, res) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`
   🚀 ${CONFIG.HAPP_NAME} запущен на порту ${port}
   📍 ${CONFIG.SERVER_LOCATION}
