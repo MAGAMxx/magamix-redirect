@@ -127,13 +127,13 @@ app.get('/sub/:subId', (req, res) => {
   const username = `MAGAMIX_${subId.slice(0, 8)}`; // красивое имя пользователя
 
   // Полный VLESS-линк (твой сервер)
-  const vlessLink = `vless://00000000-0000-0000-0000-${subId.slice(0,12).padEnd(12,'0')}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#MAGAMIX-NL-Niderlandy`;
+  const vlessLink = `vless://00000000-0000-0000-0000-${subId.slice(0,12).padEnd(12,'0')}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#Нидерланды%20🇳🇱%20MAGAMIX`;
 
   // Простой текст-формат как у Molniya
   const textResponse = `
 MAGAMIX VPN - Premium NL
 
-Username: ${username}
+Username: MAGAMIX_${subId.slice(0,8)}
 Status: active
 Traffic: Unlimited
 Expiration: ${expireFormatted} (90 days left)
@@ -141,19 +141,13 @@ Expiration: ${expireFormatted} (90 days left)
 Remark: MAGAMIX NL Premium
 Location: Netherlands
 
-VLESS Link:
+VLESS:
 ${vlessLink}
-
-Import this link in Happ to connect.
 `.trim();
   
-  res.set({
-    'Content-Type': 'text/plain; charset=utf-8',
-    'Cache-Control': 'no-cache, no-store, must-revalidate'
-  });
-
+  res.set('Content-Type', 'text/plain; charset=utf-8');
   res.send(textResponse);
-});
+  });
 // ───────────────────────────────────────────────
 // /servers/:subId  →  Список outbound серверов (Reality)
 // ───────────────────────────────────────────────
