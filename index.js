@@ -1,37 +1,102 @@
 const express = require('express');
 const { randomUUID } = require('crypto');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;;
 
 // Конфигурация VPN
 const CONFIG = {
   HAPP_NAME: "MAGAMIX VPN",
   HAPP_LOGO: "https://cdn-icons-png.flaticon.com/512/3067/3067256.png",
   SERVER_LOCATION: "Нидерланды",
-  SERVER_ADDRESS: "31.130.131.214",
-  SERVER_PORT: 2096,
   SUPPORT_URL: "https://t.me/MAGAMIX_support",
-  WEBSITE: "https://t.me/MAGAMIX_VPN_bot",
-  REALITY_HOST: "https://magamix.onrender.com/", // замените на ваш домен/сервер
-  REALITY_SNI: "https://magamix.onrender.com/"   // то же, что host
+  WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
 };
 
+// Главная страница
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html>
     <head>
-      <title>${CONFIG.HAPP_NAME}</title>
+      <title>${CONFIG.HAPP_NAME} - ${CONFIG.SERVER_LOCATION}</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
-        body { font-family: Arial; text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .btn { display:inline-block; background:white; color:#667eea; padding:15px 30px; border-radius:50px; text-decoration:none; font-weight:bold; margin:10px;}
+        body {
+          font-family: Arial, sans-serif;
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 20px;
+          text-align: center;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+        }
+        .logo {
+          width: 100px;
+          height: 100px;
+          margin-bottom: 20px;
+          border-radius: 20px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+          font-size: 2.5rem;
+          margin: 10px 0;
+        }
+        h2 {
+          font-size: 1.5rem;
+          opacity: 0.9;
+          margin-bottom: 30px;
+        }
+        .info {
+          background: rgba(255,255,255,0.1);
+          padding: 20px;
+          border-radius: 15px;
+          margin: 20px 0;
+          text-align: left;
+        }
+        .btn {
+          display: inline-block;
+          background: white;
+          color: #667eea;
+          padding: 15px 30px;
+          border-radius: 50px;
+          text-decoration: none;
+          font-weight: bold;
+          margin: 10px;
+          box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+          transition: transform 0.3s;
+        }
+        .btn:hover {
+          transform: translateY(-3px);
+        }
       </style>
     </head>
     <body>
+      <img src="${CONFIG.HAPP_LOGO}" alt="${CONFIG.HAPP_NAME}" class="logo">
       <h1>${CONFIG.HAPP_NAME}</h1>
-      <p>Используйте Telegram бота для подписки:</p>
-      <a href="https://t.me/${process.env.BOT_USERNAME || 'MAGAMIX_VPN_bot'}" class="btn">📱 Открыть бот</a>
+      <h2>${CONFIG.SERVER_LOCATION}</h2>
+      
+      <div class="info">
+        <h3>🚀 Premium VPN Service</h3>
+        <p>• Высокая скорость и стабильность</p>
+        <p>• Полная анонимность и безопасность</p>
+        <p>• Неограниченный трафик</p>
+        <p>• Поддержка 24/7</p>
+      </div>
+      
+      <p>Используйте бота для получения подписки:</p>
+      <a href="https://t.me/${process.env.BOT_USERNAME || 'MAGAMIX_VPN_bot'}" class="btn">
+        📱 Открыть Telegram бота
+      </a>
+      
+      <div style="margin-top: 40px; font-size: 0.9rem; opacity: 0.8;">
+        <p>© ${new Date().getFullYear()} ${CONFIG.HAPP_NAME}</p>
+        <p>Техподдержка: <a href="${CONFIG.SUPPORT_URL}" style="color: white;">${CONFIG.SUPPORT_URL}</a></p>
+      </div>
     </body>
     </html>
   `);
@@ -39,20 +104,23 @@ app.get('/', (req, res) => {
 
 const subscriptions = {};
 
+// Endpoint для подписок Happ (возвращает JSON конфигурацию)
 app.get('/sub/:subId', (req, res) => {
   const subId = req.params.subId;
   const now = Date.now();
 
+  // Если подписка ещё не создана — генерируем
   if (!subscriptions[subId]) {
     subscriptions[subId] = {
       uuid: randomUUID(),
       created: now,
-      expire: now + 30*24*60*60*1000
+      expire: now + 30 * 24 * 60 * 60 * 1000 // 30 дней
     };
   }
 
   const sub = subscriptions[subId];
 
+  // JSON, который Happ примет и покажет только имя VPN
   const response = {
     name: CONFIG.HAPP_NAME,
     logo: CONFIG.HAPP_LOGO,
@@ -61,36 +129,33 @@ app.get('/sub/:subId', (req, res) => {
       id: subId,
       name: CONFIG.HAPP_NAME,
       created: sub.created,
-      updated: now,
+      updated: sub.created,
       expire: sub.expire,
       time_left: sub.expire - now,
       info: `${CONFIG.SERVER_LOCATION} | Premium`
     },
-    servers: [
-      {
-        id: "1",
-        name: CONFIG.SERVER_LOCATION,
-        type: "vless",
-        address: CONFIG.SERVER_ADDRESS,
-        port: CONFIG.SERVER_PORT,
-        uuid: sub.uuid,
-        security: "reality",
-        remark: CONFIG.SERVER_LOCATION,
-        flow: "xtls-rprx-vision",
-        host: CONFIG.REALITY_HOST,
-        sni: CONFIG.REALITY_SNI,
-        xver: 0,
-        fp: "chrome"
-      }
-    ],
     metadata: {
       provider: CONFIG.HAPP_NAME,
       support: CONFIG.SUPPORT_URL,
       website: CONFIG.WEBSITE,
       version: "1.0"
-    }
+    },
+    servers: [
+      {
+        id: 1,
+        name: CONFIG.SERVER_LOCATION,
+        type: "vless",
+        address: "31.130.131.214", // IP сервера, Happ не показывает
+        port: 2096,
+        uuid: sub.uuid, // уникальный для каждой подписки
+        security: "reality",
+        remark: CONFIG.SERVER_LOCATION,
+        config: `vless://${sub.uuid}@31.130.131.214:2096?security=reality&flow=xtls-rprx-vision&encryption=none&type=tcp#${CONFIG.HAPP_NAME}`
+      }
+    ]
   };
 
+  // Заголовки для Happ
   res.set({
     'Content-Type': 'application/json; charset=utf-8',
     'X-Subscription-Name': CONFIG.HAPP_NAME,
@@ -102,6 +167,117 @@ app.get('/sub/:subId', (req, res) => {
   res.json(response);
 });
 
+// Обёртка для Happ deeplink
+app.get('/url', (req, res) => {
+  const happUrl = req.query.url;
+  
+  if (happUrl && happUrl.startsWith('happ://add/')) {
+    // Возвращаем HTML страницу с редиректом
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>MAGAMIX VPN - Открытие в Happ</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+          }
+          .logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            border-radius: 15px;
+          }
+          .loader {
+            border: 5px solid rgba(255,255,255,0.3);
+            border-top: 5px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+        <script>
+          setTimeout(function() {
+            window.location.href = "${happUrl}";
+          }, 1000);
+        </script>
+      </head>
+      <body>
+        <img src="${CONFIG.HAPP_LOGO}" alt="${CONFIG.HAPP_NAME}" class="logo">
+        <h1>${CONFIG.HAPP_NAME}</h1>
+        <p>Открытие подписки в Happ...</p>
+        <div class="loader"></div>
+        <p style="margin-top: 30px; font-size: 0.9rem;">
+          Если приложение не открылось автоматически,<br>
+          нажмите <a href="${happUrl}" style="color: #ffdd00;">здесь</a>
+        </p>
+      </body>
+      </html>
+    `);
+  } else {
+    res.status(400).send('Bad Request: Missing or invalid URL parameter');
+  }
+});
+
+// Health check для Render
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    service: CONFIG.HAPP_NAME,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 404 обработчик
+app.use((req, res) => {
+  res.status(404).send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>404 - ${CONFIG.HAPP_NAME}</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          text-align: center;
+          padding: 100px 20px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+        }
+        a {
+          color: #ffdd00;
+          text-decoration: none;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>404 - Страница не найдена</h1>
+      <p>Вернитесь на <a href="/">главную страницу</a></p>
+    </body>
+    </html>
+  `);
+});
+
+const port = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 ${CONFIG.HAPP_NAME} запущен на порту ${PORT}`);
+  console.log(`
+  🚀 ${CONFIG.HAPP_NAME} запущен на порту ${port}
+  📍 ${CONFIG.SERVER_LOCATION}
+  🌐 Домен: ${process.env.RENDER_EXTERNAL_URL || 'http://localhost:' + port}
+  `);
 });
