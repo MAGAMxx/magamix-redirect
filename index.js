@@ -154,9 +154,42 @@ app.get('/sub/:subId', (req, res) => {
 });
 
 // Редирект на 3X-UI панель (старый функционал)
-app.get('/connect/:code', (req, res) => {
+app.get('/connect/:code', async (req, res) => {
   const code = req.params.code;
-  res.redirect(302, `https://31.130.131.214:2096/sub/${code}`);
+  const target = `https://31.130.131.214:2096/sub/${code}`;
+
+  try {
+    const response = await fetch(target);
+    if (!response.ok) {
+      return res.status(response.status).send(await response.text());
+    }
+
+    let body = await response.text();
+
+    // Добавляем красивый remark в САМОЕ НАЧАЛО конфига
+    // Happ берёт первую строку как имя профиля
+    const customRemark = '#MAGAMIX VPN\n';
+    
+    // Если конфиг уже начинается с vless:// или vmess:// — вставляем перед ним
+    if (body.startsWith('vless://') || body.startsWith('vmess://')) {
+      body = customRemark + body;
+    } else {
+      // На случай, если конфиг в другом формате — добавляем в начало
+      body = customRemark + body;
+    }
+
+    // Правильные заголовки для Happ
+    res.set({
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="magamix-vpn.txt"',
+      'Access-Control-Allow-Origin': '*'
+    });
+
+    res.send(body);
+  } catch (error) {
+    console.error('Error fetching subscription:', error);
+    res.status(500).send('Error fetching subscription');
+  }
 });
 
 // Обёртка для Happ deeplink
