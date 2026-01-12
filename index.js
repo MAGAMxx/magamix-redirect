@@ -102,32 +102,33 @@ app.get('/', (req, res) => {
 
 
 const axios = require('axios');
-// Endpoint для подписок Happ (возвращает JSON конфигурацию)
+
 app.get('/sub/:subId', async (req, res) => {
   try {
     const subId = req.params.subId;
 
   // 1. Формируем заголовки, которые HAPP считывает для названия
-   const panelResponse = await axios.get(`127.0.0.1{subId}`, {
-      responseType: 'text' 
+    const response = await axios.get(`127.0.0.1{subId}`, {
+      responseType: 'text'
     });
 
-    const realSubscriptionData = panelResponse.data;
+    const vpnLinks = response.data;
 
     // 2. Устанавливаем заголовки, чтобы HAPP увидел название
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
-      'profile-title': CONFIG.HAPP_NAME, // Отобразит "MAGAMIX VPN" в HAPP
-      'Subscription-Userinfo': panelResponse.headers['subscription-userinfo'] || '',
+      'profile-title': CONFIG.HAPP_NAME, 
+      'X-Subscription-Name': CONFIG.HAPP_NAME,
+      'Subscription-Userinfo': response.headers['subscription-userinfo'] || '',
       'Access-Control-Allow-Origin': '*'
     });
 
-    const finalContent = `#profile-title: ${CONFIG.HAPP_NAME}\n${realSubscriptionData}`;
+    const finalResponse = `#profile-title: ${CONFIG.HAPP_NAME}\n${vpnLinks}`;
 
-    res.send(finalContent);
+    res.send(finalResponse);
 
   } catch (error) {
-    console.error('Ошибка при получении подписки:', error.message);
+    console.error('Ошибка получения подписки:', error.message);
     res.status(500).send('Ошибка сервера подписок');
   }
 });
