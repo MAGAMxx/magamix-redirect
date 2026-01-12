@@ -15,14 +15,30 @@ const limiter = rateLimit({
 app.use('/sub/', limiter);
 
 // Конфигурация
-const CONFIG = {
-  HAPP_NAME: "MAGAMIX VPN",
-  HAPP_LOGO: "https://cdn-icons-png.flaticon.com/512/3067/3067256.png",
-  SERVER_LOCATION: "Reality NL Premium",
-  SUPPORT_URL: "https://t.me/nejnayatp3",
-  WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
-};
+const config = {
+      "name": "MAGAMIX VPN ",
+      "expire": expireTime,
+      "traffic": {
+        "total": 150, // unlimited
+        "used": 0
+      },
+      "outbounds": [
+        {
+          "protocol": "vless",
+          "address": "31.130.131.214",
+          "port": 2053,
+          "uuid": realUuid,
+          "security": "reality",
+          "sni": "www.bing.com",
+          "fp": "chrome",
+          "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
+          "sid": "9864",
+          "remark": "🇳🇱Нидерланды"
+        }
+      ]
+    };
 
+    const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
 // Главная страница
 app.get('/', (req, res) => {
   res.send(`
@@ -66,7 +82,7 @@ app.get('/', (req, res) => {
 
 // Основной эндпоинт подписки — plain text + реальный UUID из Flask API
 app.get('/sub/:subId', async (req, res) => {
-  const subId = (req.params.subId || '').trim();
+  const subId = (req.params.subId || '').trim();;
 
   console.log(`[SUB] Запрос подписки: subId="${subId}" (длина=${subId.length})`);
 
@@ -76,25 +92,19 @@ app.get('/sub/:subId', async (req, res) => {
   }
 
   try {
-    // Запрос реального UUID из Flask API на твоём сервере VPN
-    // Поскольку бот на том же сервере (IP 31.130.131.214), используем публичный адрес
     const apiUrl = `http://31.130.131.214:8000/get_uuid?sub_id=${subId}`;
-
     const response = await fetch(apiUrl);
     const data = await response.json();
 
-    let realUuid = "00000000-0000-0000-0000-000000000000"; // fallback на случай ошибки
+    let realUuid = "00000000-0000-0000-0000-000000000000";
     if (!data.error && data.uuid) {
       realUuid = data.uuid;
-    } else {
-      console.error('Не удалось получить UUID из API:', data.error || 'Нет ответа от Flask');
     }
 
     // Заглушка на срок (90 дней) — потом подключишь реальный из базы
-    const now = new Date();
-    const expireDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-    const expireFormatted = expireDate.toISOString().split('T')[0];
-
+    const now = Date.now();
+    const expireTime = now + 90 * 24 * 60 * 60 * 1000; // ms
+    const expireFormatted = new Date(expireTime).toISOString().split('T')[0];
     const username = `MAGAMIX_${subId.slice(0, 8)}`;
 
     // VLESS-ссылка с РЕАЛЬНЫМ UUID
@@ -123,7 +133,7 @@ ${vlessLink}
       'Cache-Control': 'no-cache, no-store, must-revalidate'
     });
 
-    res.send(textResponse);
+    res.send(base64Config);
   } catch (err) {
     console.error('[SUB ERROR]', err.message);
     res.status(500).send('Server error');
