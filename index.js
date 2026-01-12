@@ -119,6 +119,7 @@ ${vlessLink}
 
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
+      'X-Subscription-Name': 'MAGAMIX VPN',
       'Cache-Control': 'no-cache, no-store, must-revalidate'
     });
 
