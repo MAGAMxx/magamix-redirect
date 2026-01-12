@@ -111,77 +111,49 @@ app.get('/', (req, res) => {
 // ───────────────────────────────────────────────
 app.get('/sub/:subId', (req, res) => {
   const subId = (req.params.subId || '').trim();
-  console.log(`[SUB] Запрос на subId: "${subId}" (длина: ${subId.length}, тип: ${typeof subId})`);
 
-  try {
-    if (!/^[0-9a-fA-F]{12,64}$/.test(subId)) {
-      console.log(`[SUB] Invalid format: ${subId}`);
-      return res.status(400).json({
-        error: "invalid_format",
-        message: "subId должен быть hex-строкой длиной минимум 12 символов"
-      });
-    }
+  console.log(`[SUB] Запрос на subId: "${subId}" (длина: ${subId.length})`);
 
-    const now = Date.now();
-    const VALIDITY_DAYS = 90;
-    const expireTime = now + (VALIDITY_DAYS * 24 * 60 * 60 * 1000);
-
-    const fullConfig = {
-      "Name": "MAGAMIX NL 🇳🇱",
-      "GlobalProxy": "true",
-      "UseChunkFiles": "true",
-      "RemoteDNSType": "DoH",
-      "RemoteDNSDomain": "https://cloudflare-dns.com/dns-query",
-      "RemoteDNSIP": "1.1.1.1",
-      "DomesticDNSType": "DoH",
-      "DomesticDNSDomain": "",
-      "DomesticDNSIP": "",
-      "Geoipurl": "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat",
-      "Geositeurl": "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat",
-      "LastUpdated": new Date().toISOString(),
-      "DnsHosts": {
-        "cloudflare-dns.com": "1.1.1.1",
-        "dns.google": "8.8.8.8"
-      },
-      "RouteOrder": "block-proxy-direct",
-      "DirectSites": ["geosite:ru", "geosite:geolocation-ru", "geosite:category-ads-all"],
-      "DirectIp": ["geoip:ru", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
-      "ProxySites": [],
-      "ProxyIp": [],
-      "BlockSites": [],
-      "BlockIp": [],
-      "DomainStrategy": "IPIfNonMatch",
-      "FakeDNS": "false",
-      "servers": [
-        {
-          "id": 1,
-          "name": "Нидерланды 🇳🇱",
-          "type": "vless",
-          "address": "31.130.131.214",
-          "port": 2053,
-          "uuid": `00000000-0000-0000-0000-${subId.slice(0,12).padEnd(12, '0')}`,
-          "security": "reality",
-          "sni": "www.bing.com",
-          "fp": "chrome",
-          "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-          "sid": "9864",
-          "flow": "",
-          "remark": "MAGAMIX • Premium • NL",
-          "expire": expireTime
-        }
-      ]
-    };
-
-    res.set({
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-cache, no-store, must-revalidate'
-    });
-
-    res.json(fullConfig);
-  } catch (err) {
-    console.error('[SUB CRASH]', err.stack);
-    res.status(500).json({ error: "server_error", message: "Внутренняя ошибка" });
+  // Минимальная защита (можно убрать для теста)
+  if (subId.length < 8 || !/^[0-9a-fA-F]+$/.test(subId)) {
+    return res.status(400).send('Invalid subscription ID');
   }
+
+  // Текущая дата + срок (заглушка 90 дней, потом подключишь реальный из базы)
+  const now = new Date();
+  const expireDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const expireFormatted = expireDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
+  const username = `MAGAMIX_${subId.slice(0, 8)}`; // красивое имя пользователя
+
+  // Полный VLESS-линк (твой сервер)
+  const vlessLink = `vless://00000000-0000-0000-0000-${subId.slice(0,12).padEnd(12,'0')}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#MAGAMIX-NL-Нидерланды`;
+
+  // Простой текст-формат как у Molniya
+  const textResponse = `
+# MAGAMIX VPN Subscription
+
+Username: ${username}
+Status: active
+Data Limit: Unlimited
+Data Used: 0 GB (resets monthly)
+Expiration Date: ${expireFormatted} (${90} days remaining)
+
+Remark: Нидерланды 🇳🇱 MAGAMIX Premium
+
+Connection Link (VLESS):
+${vlessLink}
+
+Copy the link above and import in Happ / v2ray apps.
+QR code available on request.
+  `.trim();
+
+  res.set({
+    'Content-Type': 'text/plain; charset=utf-8',
+    'Cache-Control': 'no-cache, no-store, must-revalidate'
+  });
+
+  res.send(textResponse);
 });
 // ───────────────────────────────────────────────
 // /servers/:subId  →  Список outbound серверов (Reality)
