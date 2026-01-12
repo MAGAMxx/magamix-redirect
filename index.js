@@ -23,7 +23,7 @@ const CONFIG = {
   WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
 };
 
-// Главная страница (без изменений)
+// Главная страница
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -76,11 +76,9 @@ app.get('/sub/:subId', async (req, res) => {
   }
 
   try {
-    // Запрос реального UUID из Flask API бота
-    // Если бот на Render — замени на публичный URL бота (например https://твой-бот.onrender.com)
-    // Если бот и Render на одной машине — оставь localhost
-    const apiUrl = `http://localhost:8000/get_uuid?sub_id=${subId}`;
-    // Альтернатива для продакшена: const apiUrl = `https://твой-бот.onrender.com/get_uuid?sub_id=${subId}`;
+    // Запрос реального UUID из Flask API на твоём сервере VPN
+    // Поскольку бот на том же сервере (IP 31.130.131.214), используем публичный адрес
+    const apiUrl = `http://31.130.131.214:8000/get_uuid?sub_id=${subId}`;
 
     const response = await fetch(apiUrl);
     const data = await response.json();
@@ -99,8 +97,8 @@ app.get('/sub/:subId', async (req, res) => {
 
     const username = `MAGAMIX_${subId.slice(0, 8)}`;
 
-    // VLESS-ссылка с РЕАЛЬНЫМ UUID (без кириллицы/эмодзи в remark)
-    const vlessLink = `vless://${realUuid}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#MAGAMIX-NL-Niderlandy`;
+    // VLESS-ссылка с РЕАЛЬНЫМ UUID
+    const vlessLink = `vless://${realUuid}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#Нидерланды%20MAGAMIX`;
 
     const textResponse = `
 MAGAMIX NL Premium 🇳🇱
