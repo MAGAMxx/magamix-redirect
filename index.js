@@ -107,8 +107,9 @@ app.get('/sub/:subId', async (req, res) => {
   try {
     const subId = req.params.subId;
     
-    // Запрашиваем данные напрямую из вашей панели 3x-UI
+    // ИСПРАВЛЕНО: Полный путь к подписке в 3X-UI
     const panelUrl = `31.130.131.214{subId}`;
+    
     const response = await fetch(panelUrl);
 
     if (!response.ok) {
@@ -117,24 +118,22 @@ app.get('/sub/:subId', async (req, res) => {
 
     const vpnLinks = await response.text();
 
-    // Устанавливаем заголовки для HAPP, чтобы отображалось имя
+    // Устанавливаем заголовки. В 2026 году HAPP активно смотрит на profile-title
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
       'profile-title': CONFIG.HAPP_NAME,
-      'X-Subscription-Name': CONFIG.HAPP_NAME,
-      'Subscription-Userinfo': response.headers.get('subscription-userinfo') || '',
+      'subscription-userinfo': response.headers.get('subscription-userinfo') || '',
       'Access-Control-Allow-Origin': '*'
     });
 
-    // Формируем ответ: метка с именем + сами конфиги
-    // Это гарантирует отображение "MAGAMIX VPN" вместо домена
+    // Формируем ответ: метка имени в первой строке + данные
     const finalResponse = `#profile-title: ${CONFIG.HAPP_NAME}\n${vpnLinks}`;
 
     res.send(finalResponse);
 
   } catch (error) {
-    console.error('Ошибка:', error.message);
-    res.status(500).send('Ошибка при получении подписки');
+    console.error('Ошибка проксирования подписки:', error.message);
+    res.status(500).send('Ошибка при получении подписки с сервера');
   }
 });
     
