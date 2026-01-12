@@ -12,8 +12,8 @@ const CONFIG = {
   SERVER_PORT: 2096,
   SUPPORT_URL: "https://t.me/MAGAMIX_support",
   WEBSITE: "https://t.me/MAGAMIX_VPN_bot",
-  REALITY_HOST: "yourdomain.com", // замените на ваш домен/сервер
-  REALITY_SNI: "yourdomain.com"   // то же, что host
+  REALITY_HOST: "https://magamix.onrender.com/", // замените на ваш домен/сервер
+  REALITY_SNI: "https://magamix.onrender.com/"   // то же, что host
 };
 
 app.get('/', (req, res) => {
