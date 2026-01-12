@@ -5,8 +5,8 @@ const app = express();
 const CONFIG = {
   HAPP_NAME: "MAGAMIX VPN",
   HAPP_LOGO: "https://cdn-icons-png.flaticon.com/512/3067/3067256.png",
-  SERVER_LOCATION: "Reality NL-trial",
-  SUPPORT_URL: "https://t.me/nejnayatp3",
+  SERVER_LOCATION: "🇳🇱Нидерландия",
+  SUPPORT_URL: "https://t.me/MAGAMIX_support",
   WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
 };
 
@@ -100,56 +100,39 @@ app.get('/', (req, res) => {
   `);
 });
 
+
+const axios = require('axios');
 // Endpoint для подписок Happ (возвращает JSON конфигурацию)
-app.get('/sub/:subId', (req, res) => {
-  const subId = req.params.subId;
-  const currentTime = Date.now();
+app.get('/sub/:subId', async (req, res) => {
+  try {
+    const subId = req.params.subId;
 
-  const config = {
-    name: "MAGAMIX VPN",
-    logo: CONFIG.HAPP_LOGO,
-    version: "1.0",
-    subscription: {
-      id: subId,
-      name: "MAGAMIX VPN",
-      expire: currentTime + (30 * 24 * 60 * 60 * 1000),
-      time_left: 30 * 24 * 60 * 60 * 1000,
-      created: currentTime,
-      updated: currentTime,
-      info: "Нидерланды | Premium"
-    },
-    metadata: {
-      provider: CONFIG.HAPP_NAME,
-      support: CONFIG.SUPPORT_URL,
-      website: CONFIG.WEBSITE,
-      version: "1.0"
-    },
-    servers: [
-      {
-        id: 1,
-        name: "Нидерланды",
-        type: "vless",
-        address: "31.130.131.214",
-        port: 2096,
-        uuid: "generate-this-dynamically",
-        security: "reality",
-        remark: "MAGAMIX VPN | Нидерланды",
-        config: "vless://..."
-      }
-    ]
-  };
+  // 1. Формируем заголовки, которые HAPP считывает для названия
+   const panelResponse = await axios.get(`127.0.0.1{subId}`, {
+      responseType: 'text' 
+    });
 
-  res.set({
-    'Content-Type': 'application/json; charset=utf-8',
-    'X-Subscription-Name': CONFIG.HAPP_NAME,
-    'X-Subscription-Logo': CONFIG.HAPP_LOGO,
-    'X-Provider': CONFIG.HAPP_NAME,
-    'Access-Control-Allow-Origin': '*'
-  });
+    const realSubscriptionData = panelResponse.data;
 
-  res.json(config);
+    // 2. Устанавливаем заголовки, чтобы HAPP увидел название
+    res.set({
+      'Content-Type': 'text/plain; charset=utf-8',
+      'profile-title': CONFIG.HAPP_NAME, // Отобразит "MAGAMIX VPN" в HAPP
+      'Subscription-Userinfo': panelResponse.headers['subscription-userinfo'] || '',
+      'Access-Control-Allow-Origin': '*'
+    });
+
+    const finalContent = `#profile-title: ${CONFIG.HAPP_NAME}\n${realSubscriptionData}`;
+
+    res.send(finalContent);
+
+  } catch (error) {
+    console.error('Ошибка при получении подписки:', error.message);
+    res.status(500).send('Ошибка сервера подписок');
+  }
 });
-
+    
+ 
 // Редирект на 3X-UI панель
 app.get('/connect/:code', (req, res) => {
   const code = req.params.code;
