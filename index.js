@@ -107,33 +107,25 @@ app.get('/sub/:subId', async (req, res) => {
   try {
     const subId = req.params.subId;
     
-    // ИСПРАВЛЕНО: Полный путь к подписке в 3X-UI
+    // Правильный URL к вашей панели 3X-UI
     const panelUrl = `31.130.131.214{subId}`;
     
-    const response = await fetch(panelUrl);
+    const response = await axios.get(panelUrl, { responseType: 'text' });
 
-    if (!response.ok) {
-      throw new Error(`Панель ответила кодом: ${response.status}`);
-    }
-
-    const vpnLinks = await response.text();
-
-    // Устанавливаем заголовки. В 2026 году HAPP активно смотрит на profile-title
+    // Заголовки для приложения HAPP (актуально для 2026)
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
       'profile-title': CONFIG.HAPP_NAME,
-      'subscription-userinfo': response.headers.get('subscription-userinfo') || '',
+      'subscription-userinfo': response.headers['subscription-userinfo'] || '',
       'Access-Control-Allow-Origin': '*'
     });
 
-    // Формируем ответ: метка имени в первой строке + данные
-    const finalResponse = `#profile-title: ${CONFIG.HAPP_NAME}\n${vpnLinks}`;
-
-    res.send(finalResponse);
+    // Добавляем имя профиля первой строкой и отдаем ссылки
+    res.send(`#profile-title: ${CONFIG.HAPP_NAME}\n${response.data}`);
 
   } catch (error) {
-    console.error('Ошибка проксирования подписки:', error.message);
-    res.status(500).send('Ошибка при получении подписки с сервера');
+    console.error('Ошибка:', error.message);
+    res.status(500).send('Ошибка подписки');
   }
 });
     
