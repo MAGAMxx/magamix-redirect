@@ -120,11 +120,11 @@ app.get('/sub/:subId', (req, res) => {
   }
 
   const now = Date.now();
-  const VALIDITY_DAYS = 90; // ← здесь можно потом брать реальный срок
+  const VALIDITY_DAYS = 90; // потом заменишь на реальный
   const expireTime = now + (VALIDITY_DAYS * 24 * 60 * 60 * 1000);
 
-  const routing = {
-    "Name": "MAGAMIX NL 🇳🇱",
+  const fullConfig = {
+    "Name": "MAGAMIX NL 🇳🇱",                  // ← здесь Happ точно возьмёт имя
     "GlobalProxy": "true",
     "UseChunkFiles": "true",
     "RemoteDNSType": "DoH",
@@ -157,19 +157,38 @@ app.get('/sub/:subId', (req, res) => {
     "BlockSites": [],
     "BlockIp": [],
     "DomainStrategy": "IPIfNonMatch",
-    "FakeDNS": "false"
+    "FakeDNS": "false",
+
+    // ── Встроенные серверы ── (Happ их увидит)
+    "servers": [
+      {
+        "id": 1,
+        "name": "Нидерланды 🇳🇱",
+        "type": "vless",
+        "address": "31.130.131.214",
+        "port": 2053,
+        "uuid": `00000000-0000-0000-0000-${subId.slice(0,12).padEnd(12,'0')}`,
+        "security": "reality",
+        "sni": "www.bing.com",
+        "fp": "chrome",
+        "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
+        "sid": "9864",
+        "flow": "",
+        "remark": "MAGAMIX • Premium • NL",
+        "expire": expireTime
+      }
+    ]
   };
 
   res.set({
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'X-Subscription-Name': CONFIG.HAPP_NAME,
+    'X-Subscription-Name': 'MAGAMIX NL 🇳🇱',
     'X-Subscription-Expire': expireTime.toString()
   });
 
-  res.json(routing);
+  res.json(fullConfig);
 });
-
 // ───────────────────────────────────────────────
 // /servers/:subId  →  Список outbound серверов (Reality)
 // ───────────────────────────────────────────────
