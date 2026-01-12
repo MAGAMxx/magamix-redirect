@@ -129,28 +129,22 @@ app.get('/sub/:subId', (req, res) => {
       id: subId,
       name: CONFIG.HAPP_NAME,
       created: sub.created,
-      updated: sub.created,
+      updated: now,
       expire: sub.expire,
       time_left: sub.expire - now,
       info: `${CONFIG.SERVER_LOCATION} | Premium`
     },
-    metadata: {
-      provider: CONFIG.HAPP_NAME,
-      support: CONFIG.SUPPORT_URL,
-      website: CONFIG.WEBSITE,
-      version: "1.0"
-    },
     servers: [
       {
-        id: 1,
+        id: "1",
         name: CONFIG.SERVER_LOCATION,
         type: "vless",
-        address: "31.130.131.214", // IP сервера, Happ не показывает
+        address: "31.130.131.214",
         port: 2096,
-        uuid: sub.uuid, // уникальный для каждой подписки
-        security: "reality",
+        uuid: sub.uuid,
+        security: "none",
         remark: CONFIG.SERVER_LOCATION,
-        config: `vless://${sub.uuid}@31.130.131.214:2096?security=reality&flow=xtls-rprx-vision&encryption=none&type=tcp#${CONFIG.HAPP_NAME}`
+        config: `vless://${sub.uuid}@31.130.131.214:2096?encryption=none&type=tcp#${CONFIG.HAPP_NAME}`
       }
     ]
   };
