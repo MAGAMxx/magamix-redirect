@@ -108,17 +108,17 @@ app.get('/sub/:subId', (req, res) => {
   // Здесь вы можете генерировать динамические данные
   // Пока что используем стандартные значения
   const config = {
-    name: CONFIG.HAPP_NAME,
+    name: "MAGAMIX VPN",
     logo: CONFIG.HAPP_LOGO,
     version: "1.0",
     subscription: {
       id: subId,
-      name: CONFIG.HAPP_NAME,
+      name: "MAGAMIX VPN",
       expire: currentTime + (30 * 24 * 60 * 60 * 1000), // +30 дней от текущего времени
       time_left: 30 * 24 * 60 * 60 * 1000, // 30 дней в миллисекундах
       created: currentTime,
       updated: currentTime,
-      info: `${CONFIG.SERVER_LOCATION} | Premium`
+      info: "Нидерланды | Premium"
     },
     metadata: {
       provider: CONFIG.HAPP_NAME,
@@ -129,13 +129,13 @@ app.get('/sub/:subId', (req, res) => {
     servers: [
       {
         id: 1,
-        name: CONFIG.SERVER_LOCATION,
+        name: "Нидерланды",
         type: "vless",
         address: "31.130.131.214", // ваш IP
         port: 2096, // ваш порт
         uuid: "generate-this-dynamically", // будет заменено в Happ
         security: "reality",
-        remark: `${CONFIG.HAPP_NAME} | ${CONFIG.SERVER_LOCATION}`,
+        remark: "MAGAMIX VPN | Нидерланды", 
         config: "vless://..."
       }
     ]
@@ -169,7 +169,7 @@ app.get('/url', (req, res) => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>${CONFIG.HAPP_NAME} - Открытие в Happ</title>
+        <title>MAGAMIX VPN - Открытие в Happ</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
           body {
