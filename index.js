@@ -23,7 +23,7 @@ const CONFIG = {
   WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
 };
 
-// Главная страница (оставлена как была)
+// Главная страница (без изменений)
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -64,7 +64,7 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Главный эндпоинт подписки — plain text + РЕАЛЬНЫЙ UUID из Flask API
+// Основной эндпоинт подписки — plain text + реальный UUID из Flask API
 app.get('/sub/:subId', async (req, res) => {
   const subId = (req.params.subId || '').trim();
 
@@ -76,31 +76,31 @@ app.get('/sub/:subId', async (req, res) => {
   }
 
   try {
-    // Запрос реального UUID из твоего Flask API
-    // Если бот на Render — замени на https://твой-бот.onrender.com/get_uuid
-    // Если бот локально или на другом сервере — укажи его публичный URL
-    const apiUrl = `http://localhost:8000/get_uuid?sub_id=${subId}`; // ← для теста локально
-    // const apiUrl = `https://твой-бот.onrender.com/get_uuid?sub_id=${subId}`; // ← для продакшена
+    // Запрос реального UUID из Flask API бота
+    // Если бот на Render — замени на публичный URL бота (например https://твой-бот.onrender.com)
+    // Если бот и Render на одной машине — оставь localhost
+    const apiUrl = `http://localhost:8000/get_uuid?sub_id=${subId}`;
+    // Альтернатива для продакшена: const apiUrl = `https://твой-бот.onrender.com/get_uuid?sub_id=${subId}`;
 
     const response = await fetch(apiUrl);
     const data = await response.json();
 
-    let realUuid = "00000000-0000-0000-0000-000000000000"; // fallback на случай ошибки API
+    let realUuid = "00000000-0000-0000-0000-000000000000"; // fallback на случай ошибки
     if (!data.error && data.uuid) {
       realUuid = data.uuid;
     } else {
-      console.error('Не удалось получить UUID из API:', data.error || 'Нет ответа');
+      console.error('Не удалось получить UUID из API:', data.error || 'Нет ответа от Flask');
     }
 
-    // Заглушка на срок (90 дней) — потом заменишь на реальный из базы
+    // Заглушка на срок (90 дней) — потом подключишь реальный из базы
     const now = new Date();
     const expireDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
     const expireFormatted = expireDate.toISOString().split('T')[0];
 
     const username = `MAGAMIX_${subId.slice(0, 8)}`;
 
-    // VLESS-ссылка с РЕАЛЬНЫМ UUID
-    const vlessLink = `vless://${realUuid}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#Нидерланды%20MAGAMIX`;
+    // VLESS-ссылка с РЕАЛЬНЫМ UUID (без кириллицы/эмодзи в remark)
+    const vlessLink = `vless://${realUuid}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#MAGAMIX-NL-Niderlandy`;
 
     const textResponse = `
 MAGAMIX NL Premium 🇳🇱
