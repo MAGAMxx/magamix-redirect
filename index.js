@@ -98,7 +98,7 @@ app.get('/sub/:subId', async (req, res) => {
     const username = `MAGAMIX_${subId.slice(0, 8)}`;
 
     // VLESS-ссылка с РЕАЛЬНЫМ UUID
-    const vlessLink = `vless://${realUuid}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#Нидерланды%20MAGAMIX`;
+    const vlessLink = `vless://${realUuid}@31.130.131.214:2053?type=tcp&security=reality&sni=www.bing.com&fp=chrome&pbk=P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30&sid=9864&flow=#%F0%9F%87%B3%F0%9F%87%B1%20%D0%9D%D0%B8%D0%B4%D0%B5%D1%80%D0%BB%D0%B0%D0%BD%D0%B4%D1%8B`;
 
     const textResponse = `
 MAGAMIX NL Premium 🇳🇱
@@ -108,7 +108,7 @@ Status: active
 Traffic: Unlimited
 Expiration: ${expireFormatted} (90 дней)
 
-Remark: Нидерланды MAGAMIX Premium
+Remark: 🇳🇱Нидерланды - MAGAMIX VPN
 Location: Netherlands
 
 VLESS Link:
