@@ -3,9 +3,9 @@ const app = express();
 
 // Конфигурация
 const CONFIG = {
-  HAPP_NAME: "MAGAMIX VPN",
-  HAPP_LOGO: "https://cdn-icons-png.flaticon.com/512/3067/3067256.png", // или другую иконку
-  SERVER_LOCATION: "Reality NL-trial",
+  HAPP_NAME: "MAGAMIX VPN 🇳🇱",
+  HAPP_LOGO: "https://cdn-icons-png.flaticon.com/512/3067/3067256.png",
+  SERVER_LOCATION: "Нидерланды 🇳🇱",
   SUPPORT_URL: "https://t.me/nejnayatp3",
   WEBSITE: "https://t.me/your_bot_username"
 };
@@ -19,94 +19,24 @@ app.get('/', (req, res) => {
       <title>${CONFIG.HAPP_NAME} - ${CONFIG.SERVER_LOCATION}</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
-        body {
-          font-family: Arial, sans-serif;
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 20px;
-          text-align: center;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-        }
-        .logo {
-          width: 100px;
-          height: 100px;
-          margin-bottom: 20px;
-          border-radius: 20px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        h1 {
-          font-size: 2.5rem;
-          margin: 10px 0;
-        }
-        h2 {
-          font-size: 1.5rem;
-          opacity: 0.9;
-          margin-bottom: 30px;
-        }
-        .info {
-          background: rgba(255,255,255,0.1);
-          padding: 20px;
-          border-radius: 15px;
-          margin: 20px 0;
-          text-align: left;
-        }
-        .btn {
-          display: inline-block;
-          background: white;
-          color: #667eea;
-          padding: 15px 30px;
-          border-radius: 50px;
-          text-decoration: none;
-          font-weight: bold;
-          margin: 10px;
-          box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-          transition: transform 0.3s;
-        }
-        .btn:hover {
-          transform: translateY(-3px);
-        }
+        /* ... ваш существующий CSS ... */
       </style>
     </head>
     <body>
       <img src="${CONFIG.HAPP_LOGO}" alt="${CONFIG.HAPP_NAME}" class="logo">
       <h1>${CONFIG.HAPP_NAME}</h1>
       <h2>${CONFIG.SERVER_LOCATION}</h2>
-      
-      <div class="info">
-        <h3>🚀 Premium VPN Service</h3>
-        <p>• Высокая скорость и стабильность</p>
-        <p>• Полная анонимность и безопасность</p>
-        <p>• Неограниченный трафик</p>
-        <p>• Поддержка 24/7</p>
-      </div>
-      
-      <p>Используйте бота для получения подписки:</p>
-      <a href="https://t.me/${process.env.BOT_USERNAME || 'your_bot'}" class="btn">
-        📱 Открыть Telegram бота
-      </a>
-      
-      <div style="margin-top: 40px; font-size: 0.9rem; opacity: 0.8;">
-        <p>© ${new Date().getFullYear()} ${CONFIG.HAPP_NAME}</p>
-        <p>Техподдержка: <a href="${CONFIG.SUPPORT_URL}" style="color: white;">${CONFIG.SUPPORT_URL}</a></p>
-      </div>
+      <!-- ... остальной HTML ... -->
     </body>
     </html>
   `);
 });
 
-// Endpoint для подписок Happ (возвращает JSON конфигурацию)
+// Endpoint для подписок Happ
 app.get('/sub/:subId', (req, res) => {
   const subId = req.params.subId;
-  const currentTime = Date.now();
   
-  // Здесь вы можете генерировать динамические данные
-  // Пока что используем стандартные значения
+  // Создаем конфигурацию
   const config = {
     name: CONFIG.HAPP_NAME,
     logo: CONFIG.HAPP_LOGO,
@@ -114,31 +44,18 @@ app.get('/sub/:subId', (req, res) => {
     subscription: {
       id: subId,
       name: CONFIG.HAPP_NAME,
-      expire: currentTime + (30 * 24 * 60 * 60 * 1000), // +30 дней от текущего времени
-      time_left: 30 * 24 * 60 * 60 * 1000, // 30 дней в миллисекундах
-      created: currentTime,
-      updated: currentTime,
-      info: `${CONFIG.SERVER_LOCATION} | Premium`
+      expire: Date.now() + (30 * 24 * 60 * 60 * 1000),
+      time_left: 30 * 24 * 60 * 60 * 1000,
+      created: Date.now(),
+      updated: Date.now(),
+      info: CONFIG.SERVER_LOCATION
     },
     metadata: {
       provider: CONFIG.HAPP_NAME,
       support: CONFIG.SUPPORT_URL,
       website: CONFIG.WEBSITE,
       version: "1.0"
-    },
-    servers: [
-      {
-        id: 1,
-        name: CONFIG.SERVER_LOCATION,
-        type: "vless",
-        address: "31.130.131.214", // ваш IP
-        port: 2096, // ваш порт
-        uuid: "generate-this-dynamically", // будет заменено в Happ
-        security: "reality",
-        remark: `${CONFIG.HAPP_NAME} | ${CONFIG.SERVER_LOCATION}`,
-        config: "vless://..."
-      }
-    ]
+    }
   };
 
   // Устанавливаем правильные заголовки для Happ
