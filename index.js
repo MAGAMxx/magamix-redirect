@@ -1,3 +1,4 @@
+import fetch from 'node-fetch';
 const express = require('express');
 const app = express();
 
@@ -135,7 +136,7 @@ app.get('/sub/:subId', (req, res) => {
         port: 2096, // ваш порт
         uuid: "generate-this-dynamically", // будет заменено в Happ
         security: "reality",
-        remark: "MAGAMIX VPN | Нидерланды", 
+        remark: "MAGAMIX | Нидерланды", 
         config: "vless://..."
       }
     ]
@@ -154,9 +155,20 @@ app.get('/sub/:subId', (req, res) => {
 });
 
 // Редирект на 3X-UI панель (старый функционал)
-app.get('/connect/:code', (req, res) => {
+app.get('/connect/:code', async (req, res) => {
   const code = req.params.code;
-  res.redirect(302, `https://31.130.131.214:2096/sub/${code}`);
+  const target = `https://31.130.131.214:2096/sub/${code}`;
+
+  const response = await fetch(target);
+  const body = await response.text();
+
+  res.set({
+    'Content-Type': 'text/plain; charset=utf-8',
+    'X-Subscription-Name': 'MAGAMIX VPN',
+    'X-Subscription-Logo': 'https://cdn-icons-png.flaticon.com/512/3067/3067256.png'
+  });
+
+  res.send(body);
 });
 
 // Обёртка для Happ deeplink
