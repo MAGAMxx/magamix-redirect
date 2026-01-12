@@ -112,10 +112,10 @@ app.get('/', (req, res) => {
 app.get('/sub/:subId', (req, res) => {
   const subId = req.params.subId.trim();
 
-  if (!/^[0-9a-fA-F]{16,64}$/.test(subId)) {
+  if (!/^[0-9a-fA-F]{8,}$/.test(subId)) {
     return res.status(400).json({
       error: "invalid_format",
-      message: "subId должен быть hex-строкой длиной 16–64 символа"
+      message: "subId должен быть hex-строкой длиной минимум 8 символов"
     });
   }
 
