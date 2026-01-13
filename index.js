@@ -1,14 +1,14 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const fetch = require('node-fetch'); // Обязательно добавь в package.json: "node-fetch": "^2.6.7"
+const fetch = require('node-fetch');
 
 const app = express();
 
-// Rate Limit — защита от спама
+// Rate Limit
 const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 минута
+  windowMs: 60 * 1000,
   max: 45,
-  message: { error: "Слишком много запросов. Попробуйте позже" },
+  message: { error: "Слишком много запросов" },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -23,7 +23,7 @@ const CONFIG = {
   WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
 };
 
-// Главная страница
+// Главная страница (без изменений)
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -64,40 +64,37 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Основной эндпоинт подписки — base64 JSON (Happ увидит имя, срок, трафик и сервер)
+// Основной эндпоинт — чистый base64 JSON без заглушек
 app.get('/sub/:subId', async (req, res) => {
   const subId = (req.params.subId || '').trim();
 
-  console.log(`[SUB] Запрос подписки: subId="${subId}" (длина=${subId.length})`);
+  console.log(`[SUB] Запрос подписки: subId="${subId}"`);
 
   if (subId.length < 8 || !/^[0-9a-fA-F]+$/.test(subId)) {
     return res.status(400).send('Invalid subscription ID');
   }
 
   try {
-    // Получаем реальный UUID из Flask API
+    // Получаем реальный UUID и срок из Flask API (добавь в Flask: expiryTime)
     const apiUrl = `http://31.130.131.214:8000/get_uuid?sub_id=${subId}`;
     const response = await fetch(apiUrl);
     const data = await response.json();
 
-    let realUuid = "00000000-0000-0000-0000-000000000000"; // fallback
-    if (!data.error && data.uuid) {
-      realUuid = data.uuid;
-    } else {
-      console.error('Не удалось получить UUID:', data.error || 'Нет ответа');
+    if (data.error || !data.uuid || !data.expiryTime) {
+      console.error('Ошибка API:', data.error || 'Нет uuid/expiryTime');
+      return res.status(404).send('Subscription not found');
     }
 
-    // Реальный срок (заглушка 90 дней — потом подключишь из базы)
-    const now = Date.now();
-    const expireTime = now + 90 * 24 * 60 * 60 * 1000; // миллисекунды
+    const realUuid = data.uuid;
+    const expireTime = data.expiryTime; // миллисекунды до истечения (timestamp)
 
-    // JSON-конфиг для Happ (это то, что он ожидает)
+    // JSON для Happ
     const config = {
       "name": "MAGAMIX NL Premium 🇳🇱",
       "expire": expireTime,
       "traffic": {
-        "total": 0,      // 0 = Unlimited
-        "used": 0
+        "total": 0,     // Unlimited
+        "used": 0       // Реальный трафик подключишь позже
       },
       "outbounds": [
         {
@@ -116,7 +113,6 @@ app.get('/sub/:subId', async (req, res) => {
       ]
     };
 
-    // Кодируем в base64 — это единственный ответ
     const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
 
     res.set({
@@ -131,7 +127,7 @@ app.get('/sub/:subId', async (req, res) => {
   }
 });
 
-// Обёртка для Happ deeplink
+// Обёртка deeplink
 app.get('/url', (req, res) => {
   const happUrl = req.query.url;
   if (happUrl && happUrl.startsWith('happ://add/')) {
