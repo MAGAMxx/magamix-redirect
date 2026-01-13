@@ -88,78 +88,11 @@ app.get('/sub/:subId', async (req, res) => {
     const expireTime = data.expiryTime;
 
     const config = {
-      "dns": {
-        "hosts": {
-          "domain:googleapis.cn": "googleapis.com"
-        },
-        "queryStrategy": "UseIPv4",
-        "servers": [
-          "1.1.1.1",
-          {
-            "address": "1.1.1.1",
-            "domains": [],
-            "port": 53
-          },
-          {
-            "address": "8.8.8.8",
-            "domains": [],
-            "port": 53
-          }
-        ]
-      },
-      "inbounds": [
-        {
-          "listen": "127.0.0.1",
-          "port": 10808,
-          "protocol": "socks",
-          "settings": {
-            "auth": "noauth",
-            "udp": true,
-            "userLevel": 8
-          },
-          "sniffing": {
-            "destOverride": ["http", "tls", "quic"],
-            "enabled": true
-          },
-          "tag": "socks"
-        },
-        {
-          "listen": "127.0.0.1",
-          "port": 10809,
-          "protocol": "http",
-          "settings": {
-            "userLevel": 8
-          },
-          "sniffing": {
-            "destOverride": ["http", "tls", "quic"],
-            "enabled": true
-          },
-          "tag": "http"
-        },
-        {
-          "listen": "127.0.0.1",
-          "port": 11111,
-          "protocol": "dokodemo-door",
-          "settings": {
-            "address": "127.0.0.1"
-          },
-          "tag": "metrics_in"
-        }
-      ],
-      "log": {
-        "loglevel": "error"
-      },
-      "metrics": {
-        "tag": "metrics_out"
-      },
+      "name": "MAGAMIX NL Premium 🇳🇱",
+      "expire": expireTime,
+      "traffic": { "total": 0, "used": 0 },
       "outbounds": [
         {
-          "mux": {
-            "concurrency": -1,
-            "enabled": false,
-            "xudpConcurrency": 8,
-            "xudpProxyUDP443": ""
-          },
           "protocol": "vless",
           "settings": {
             "vnext": [
@@ -167,94 +100,33 @@ app.get('/sub/:subId', async (req, res) => {
                 "address": "31.130.131.214",
                 "port": 2053,
                 "users": [
-                  {
-                    "encryption": "none",
-                    "id": realUuid,
-                    "level": 8,
-                    "security": "auto"
-                  }
+                  { "id": realUuid, "encryption": "none" }
                 ]
               }
             ]
-         },
+          },
           "streamSettings": {
             "network": "tcp",
-            "realitySettings": {
-              "allowInsecure": false,
-              "fingerprint": "chrome",
-              "publicKey": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-              "serverName": "www.bing.com",
-              "shortId": "9864",
-              "show": false,
-              "spiderX": "/"
-            },
             "security": "reality",
-            "tcpSettings": {
-              "header": {
-                "type": "none"
-              }
+            "realitySettings": {
+              "show": false,
+              "dest": "www.bing.com:443",
+              "xver": 0,
+              "serverNames": ["www.bing.com"],
+              "privateKey": "",
+              "minClientVer": "",
+              "maxClientVer": "",
+              "maxTimeDiff": 0,
+              "shortIds": ["9864"],
+              "publicKey": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
+              "spiderX": "/"
             }
           },
-          "tag": "proxy"
-        },
-        {
-          "protocol": "freedom",
-          "settings": {
-            "domainStrategy": "UseIP"
-          },
-          "tag": "direct"
-        },
-        {
-          "protocol": "blackhole",
-          "settings": {
-            "response": {
-              "type": "http"
-            }
-          },
-          "tag": "block"
+          "tag": "proxy",
+          "remark": "🇳🇱Нидерланды"
         }
       ],
-      "policy": {
-        "levels": {
-          "0": {
-            "statsUserDownlink": true,
-            "statsUserUplink": true
-          },
-          "8": {
-            "connIdle": 300,
-            "downlinkOnly": 1,
-            "handshake": 4,
-            "uplinkOnly": 1
-          }
-        },
-        "system": {
-          "statsInboundDownlink": true,
-          "statsInboundUplink": true,
-          "statsOutboundDownlink": true,
-          "statsOutboundUplink": true
-        }
-      },
-      "remarks": "🇳🇱Нидерланды", 
-      "routing": {
-        "domainStrategy": "IPIfNonMatch",
-        "rules": [
-          {
-            "inboundTag": ["metrics_in"],
-            "outboundTag": "metrics_out"
-          },
-          {
-            "ip": ["1.1.1.1"],
-            "outboundTag": "proxy",
-            "port": "53"
-          },
-          {
-            "ip": ["8.8.8.8"],
-            "outboundTag": "direct",
-            "port": "53"
-          }
-        ]
-      },
-      "stats": {}
+      "remarks": "🇳🇱Нидерланды"
     };
     
     const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
