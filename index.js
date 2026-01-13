@@ -100,7 +100,11 @@ app.get('/sub/:subId', async (req, res) => {
                 "address": "31.130.131.214",
                 "port": 2053,
                 "users": [
-                  { "id": realUuid, "encryption": "none" }
+                  {
+                    "id": realUuid,
+                    "encryption": "none",
+                    "level": 0
+                  }
                 ]
               }
             ]
@@ -124,9 +128,13 @@ app.get('/sub/:subId', async (req, res) => {
           },
           "tag": "proxy",
           "remark": "🇳🇱Нидерланды"
+        },
+        {
+          "protocol": "freedom",
+          "tag": "direct"
         }
       ],
-      "remarks": "🇳🇱Нидерланды"
+      "remarks": "🇳🇱Нидерланды" 
     };
     
     const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
