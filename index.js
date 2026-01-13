@@ -86,7 +86,6 @@ app.get('/sub/:subId', async (req, res) => {
 
   console.log(`[SUB] Запрос подписки: subId="${subId}" (длина=${subId.length})`);
 
-
   if (subId.length < 8 || !/^[0-9a-fA-F]+$/.test(subId)) {
     return res.status(400).send('Invalid subscription ID');
   }
@@ -107,8 +106,6 @@ app.get('/sub/:subId', async (req, res) => {
     // Реальный срок (заглушка 90 дней — потом заменишь на данные из базы)
     const now = Date.now();
     const expireTime = now + 90 * 24 * 60 * 60 * 1000; // в миллисекундах
-
-
 
     // JSON-конфиг для Happ (это то, что он ожидает)
     const config = {
@@ -140,7 +137,6 @@ app.get('/sub/:subId', async (req, res) => {
 
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
-
       'Cache-Control': 'no-cache, no-store, must-revalidate'
     });
 
