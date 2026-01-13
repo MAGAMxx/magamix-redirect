@@ -76,27 +76,36 @@ app.get('/sub/:subId', async (req, res) => {
   try {
     // Получаем реальный UUID из Flask API
     const apiUrl = `http://31.130.131.214:8000/get_uuid?sub_id=${subId}`;
+    console.log(`[API] Запрос к: ${apiUrl}`);
+    
     const response = await fetch(apiUrl);
     const data = await response.json();
 
     let realUuid = "00000000-0000-0000-0000-000000000000";
     if (!data.error && data.uuid) {
       realUuid = data.uuid;
+      console.log(`[API] Получен UUID: ${realUuid}`);
     } else {
       console.error('Не удалось получить UUID:', data.error || 'Нет ответа');
+      // Можно временно использовать тестовый UUID для отладки
+      // realUuid = "12345678-1234-1234-1234-123456789012";
     }
 
-    // Реальный срок (заглушка 90 дней — потом заменишь на данные из базы)
+    // Рассчитываем дату истечения (90 дней от текущего момента)
     const now = Date.now();
-    const expireTime = now + 90 * 24 * 60 * 60 * 1000; // в миллисекундах
+    const expireTime = now + (90 * 24 * 60 * 60 * 1000);
+    
+    // Форматируем для удобочитаемости
+    const expireDate = new Date(expireTime);
+    console.log(`[CONFIG] Срок действия до: ${expireDate.toISOString()}`);
 
-    // JSON-конфиг для Happ (это то, что он ожидает)
+    // JSON-конфиг для Happ в правильном формате
     const config = {
-      "name": "MAGAMIX NL Premium 🇳🇱",
-      "expire": expireTime,                // ← дата истечения в ms (Happ покажет таймер)
+      "name": "MAGAMIX VPN Premium",
+      "expire": Math.floor(expireTime / 1000), // HAPP часто ожидает секунды, не миллисекунды
       "traffic": {
-        "total": 0,                        // 0 = Unlimited
-        "used": 0                          // использованный трафик (можно потом подтягивать)
+        "total": 0, // 0 = безлимит
+        "used": 0
       },
       "outbounds": [
         {
@@ -109,25 +118,60 @@ app.get('/sub/:subId', async (req, res) => {
           "fp": "chrome",
           "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
           "sid": "9864",
-          "flow": "",
-          "remark": "🇳🇱Нидерланды"
+          "remark": "🇳🇱 Нидерланды",
+          "flow": ""
         }
-      ]
+      ],
+      // Добавляем дополнительные поля для совместимости
+      "version": "1.0",
+      "created": Math.floor(now / 1000)
     };
 
-    // Кодируем в base64 — это и есть ответ для Happ
-    const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
+    // Кодируем в base64
+    const jsonString = JSON.stringify(config, null, 2);
+    console.log(`[CONFIG] JSON: ${jsonString.substring(0, 200)}...`);
+    
+    const base64Config = Buffer.from(jsonString).toString('base64');
+    console.log(`[CONFIG] Base64 длина: ${base64Config.length}`);
 
+    // Отправляем в правильном формате
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'no-cache, no-store, must-revalidate'
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Content-Length': Buffer.byteLength(base64Config)
     });
 
-    // Отправляем ТОЛЬКО base64-строку — без лишнего текста!
+    // Отправляем ТОЛЬКО base64 строку
     res.send(base64Config);
+    
+    console.log(`[SUB] Подписка отправлена для subId: ${subId}`);
+    
   } catch (err) {
     console.error('[SUB ERROR]', err.message);
-    res.status(500).send('Server error');
+    console.error('[SUB ERROR] Stack:', err.stack);
+    
+    // В случае ошибки можно вернуть тестовую конфигурацию
+    const fallbackConfig = {
+      "name": "MAGAMIX VPN Test",
+      "expire": Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000),
+      "traffic": {"total": 0, "used": 0},
+      "outbounds": [{
+        "protocol": "vless",
+        "address": "31.130.131.214",
+        "port": 2053,
+        "uuid": "12345678-1234-1234-1234-123456789012",
+        "security": "reality",
+        "sni": "www.bing.com",
+        "fp": "chrome",
+        "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
+        "sid": "9864",
+        "remark": "🇳🇱 Нидерланды (Test)",
+        "flow": ""
+      }]
+    };
+    
+    const fallbackBase64 = Buffer.from(JSON.stringify(fallbackConfig)).toString('base64');
+    res.send(fallbackBase64);
   }
 });
 
