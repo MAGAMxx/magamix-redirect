@@ -90,9 +90,18 @@ app.get('/sub/:subId', async (req, res) => {
     const config = {
       "name": "MAGAMIX NL Premium 🇳🇱",
       "expire": expireTime,
-      "traffic": { "total": 0, "used": 0 },
+      "traffic": {
+        "total": 0,
+        "used": 0
+      },
       "outbounds": [
         {
+          "mux": {
+            "concurrency": -1,
+            "enabled": false,
+            "xudpConcurrency": 8,
+            "xudpProxyUDP443": ""
+          },
           "protocol": "vless",
           "settings": {
             "vnext": [
@@ -124,6 +133,10 @@ app.get('/sub/:subId', async (req, res) => {
               "shortIds": ["9864"],
               "publicKey": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
               "spiderX": "/"
+            },
+            "tlsSettings": {
+              "serverName": "www.bing.com",
+              "fingerprint": "chrome"
             }
           },
           "tag": "proxy",
@@ -132,9 +145,13 @@ app.get('/sub/:subId', async (req, res) => {
         {
           "protocol": "freedom",
           "tag": "direct"
+        },
+        {
+          "protocol": "blackhole",
+          "tag": "block"
         }
       ],
-      "remarks": "🇳🇱Нидерланды" 
+      "remarks": "🇳🇱Нидерланды"
     };
     
     const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
