@@ -1,28 +1,44 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const fetch = require('node-fetch');
+const fetch = require('node-fetch'); // Обязательно добавь в package.json: "node-fetch": "^2.6.7"
 
 const app = express();
 
-// Rate Limit
+// Rate Limit — защита от спама
 const limiter = rateLimit({
-  windowMs: 60 * 1000,
+  windowMs: 60 * 1000, // 1 минута
   max: 45,
-  message: { error: "Слишком много запросов" },
+  message: { error: "Слишком много запросов. Попробуйте позже" },
   standardHeaders: true,
   legacyHeaders: false,
 });
 app.use('/sub/', limiter);
 
 // Конфигурация
-const CONFIG = {
-  HAPP_NAME: "MAGAMIX VPN",
-  HAPP_LOGO: "https://cdn-icons-png.flaticon.com/512/3067/3067256.png",
-  SERVER_LOCATION: "Reality NL Premium",
-  SUPPORT_URL: "https://t.me/nejnayatp3",
-  WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
-};
+const config = {
+      "name": "MAGAMIX VPN ",
+      "expire": expireTime,
+      "traffic": {
+        "total": 150, // unlimited
+        "used": 0
+      },
+      "outbounds": [
+        {
+          "protocol": "vless",
+          "address": "31.130.131.214",
+          "port": 2053,
+          "uuid": realUuid,
+          "security": "reality",
+          "sni": "www.bing.com",
+          "fp": "chrome",
+          "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
+          "sid": "9864",
+          "remark": "🇳🇱Нидерланды"
+        }
+      ]
+    };
 
+    const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
 // Главная страница
 app.get('/', (req, res) => {
   res.send(`
@@ -64,140 +80,71 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Основной эндпоинт — чистый base64 JSON с реальными данными
+// Основной эндпоинт подписки — plain text + реальный UUID из Flask API
 app.get('/sub/:subId', async (req, res) => {
   const subId = (req.params.subId || '').trim();
-  console.log(`[SUB] Запрос подписки: subId="${subId}"`);
+
+  console.log(`[SUB] Запрос подписки: subId="${subId}" (длина=${subId.length})`);
+
 
   if (subId.length < 8 || !/^[0-9a-fA-F]+$/.test(subId)) {
     return res.status(400).send('Invalid subscription ID');
   }
 
   try {
+    // Получаем реальный UUID из Flask API
     const apiUrl = `http://31.130.131.214:8000/get_uuid?sub_id=${subId}`;
     const response = await fetch(apiUrl);
     const data = await response.json();
 
-    if (data.error || !data.uuid || !data.expiryTime) {
-      console.error('Ошибка API:', data.error || 'Нет uuid/expiryTime');
-      return res.status(404).send('Subscription not found');
+    let realUuid = "00000000-0000-0000-0000-000000000000";
+    if (!data.error && data.uuid) {
+      realUuid = data.uuid;
+    } else {
+      console.error('Не удалось получить UUID:', data.error || 'Нет ответа');
     }
 
-    const realUuid = data.uuid;
-    const expireTime = data.expiryTime;
+    // Реальный срок (заглушка 90 дней — потом заменишь на данные из базы)
+    const now = Date.now();
+    const expireTime = now + 90 * 24 * 60 * 60 * 1000; // в миллисекундах
 
+
+
+    // JSON-конфиг для Happ (это то, что он ожидает)
     const config = {
-      "dns": {
-        "hosts": {
-          "domain:googleapis.cn": "googleapis.com"
-        },
-        "queryStrategy": "UseIPv4",
-        "servers": [
-          "1.1.1.1",
-          { "address": "1.1.1.1", "domains": [], "port": 53 },
-          { "address": "8.8.8.8", "domains": [], "port": 53 }
-        ]
+      "name": "MAGAMIX NL Premium 🇳🇱",
+      "expire": expireTime,                // ← дата истечения в ms (Happ покажет таймер)
+      "traffic": {
+        "total": 0,                        // 0 = Unlimited
+        "used": 0                          // использованный трафик (можно потом подтягивать)
       },
-      "inbounds": [
-        {
-          "listen": "127.0.0.1",
-          "port": 10808,
-          "protocol": "socks",
-          "settings": { "auth": "noauth", "udp": true, "userLevel": 8 },
-          "sniffing": { "destOverride": ["http", "tls", "quic"], "enabled": true },
-          "tag": "socks"
-        },
-        {
-          "listen": "127.0.0.1",
-          "port": 10809,
-          "protocol": "http",
-          "settings": { "userLevel": 8 },
-          "sniffing": { "destOverride": ["http", "tls", "quic"], "enabled": true },
-          "tag": "http"
-        }
-      ],
-      "log": { "loglevel": "error" },
       "outbounds": [
         {
-          "mux": { "concurrency": -1, "enabled": false, "xudpConcurrency": 8, "xudpProxyUDP443": "" },
           "protocol": "vless",
-          "settings": {
-            "vnext": [
-              {
-                "address": "31.130.131.214",
-                "port": 2053,
-                "users": [
-                  {
-                    "id": realUuid,
-                    "encryption": "none",
-                    "flow": "",
-                    "level": 8
-                  }
-                ]
-              }
-            ]
-          },
-          "streamSettings": {
-            "network": "tcp",
-            "security": "reality",
-            "realitySettings": {
-              "show": false,
-              "dest": "www.bing.com:443",
-              "xver": 0,
-              "serverNames": ["www.bing.com"],
-              "privateKey": "mJr8o7ZFvzeE3C0JlixbIFbU6FcC6yxzIfwsc776BVw",
-              "minClientVer": "",
-              "maxClientVer": "",
-              "maxTimeDiff": 0,
-              "shortIds": ["9864"],
-              "publicKey": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-              "spiderX": "/"
-            }
-          },
-          "tag": "proxy",
+          "address": "31.130.131.214",
+          "port": 2053,
+          "uuid": realUuid,
+          "security": "reality",
+          "sni": "www.bing.com",
+          "fp": "chrome",
+          "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
+          "sid": "9864",
+          "flow": "",
           "remark": "🇳🇱Нидерланды"
-        },
-        {
-          "protocol": "freedom",
-          "tag": "direct"
-        },
-        {
-          "protocol": "blackhole",
-          "tag": "block"
         }
-      ],
-      "policy": {
-        "levels": {
-          "0": { "statsUserDownlink": true, "statsUserUplink": true },
-          "8": { "connIdle": 300, "downlinkOnly": 1, "handshake": 4, "uplinkOnly": 1 }
-        },
-        "system": {
-          "statsInboundDownlink": true,
-          "statsInboundUplink": true,
-          "statsOutboundDownlink": true,
-          "statsOutboundUplink": true
-        }
-      },
-      "remarks": "🇳🇱Нидерланды",
-      "routing": {
-        "domainStrategy": "IPIfNonMatch",
-        "rules": [
-          {
-            "inboundTag": ["metrics_in"],
-            "outboundTag": "metrics_out"
-          }
-        ]
-      },
-      "stats": {}
+      ]
     };
 
+    // Кодируем в base64 — это и есть ответ для Happ
     const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
 
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
+
       'Cache-Control': 'no-cache, no-store, must-revalidate'
     });
 
+    // Отправляем ТОЛЬКО base64-строку — без лишнего текста!
     res.send(base64Config);
   } catch (err) {
     console.error('[SUB ERROR]', err.message);
@@ -205,7 +152,7 @@ app.get('/sub/:subId', async (req, res) => {
   }
 });
 
-// Обёртка для deeplink
+// Обёртка для Happ deeplink
 app.get('/url', (req, res) => {
   const happUrl = req.query.url;
   if (happUrl && happUrl.startsWith('happ://add/')) {
