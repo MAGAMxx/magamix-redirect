@@ -347,6 +347,84 @@ app.get('/sub/:subId', async (req, res) => {
   }
 });
 
+app.get('/debug/:subId', async (req, res) => {
+  const subId = (req.params.subId || '').trim();
+  
+  try {
+    // Получаем UUID
+    const apiUrl = `http://31.130.131.214:8000/get_uuid?sub_id=${subId}`;
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    
+    let realUuid = "12345678-1234-1234-1234-123456789012"; // тестовый по умолчанию
+    if (!data.error && data.uuid) {
+      realUuid = data.uuid;
+    }
+    
+    // Создаем полную конфигурацию
+    const config = {
+      "dns": {
+        "servers": ["1.1.1.1", "8.8.8.8"]
+      },
+      "inbounds": [
+        {
+          "port": 10808,
+          "protocol": "socks",
+          "settings": {"auth": "noauth", "udp": true},
+          "tag": "socks"
+        },
+        {
+          "port": 10809,
+          "protocol": "http",
+          "tag": "http"
+        }
+      ],
+      "log": {"loglevel": "warning"},
+      "outbounds": [
+        {
+          "protocol": "vless",
+          "settings": {
+            "vnext": [{
+              "address": "31.130.131.214",
+              "port": 2053,
+              "users": [{
+                "id": realUuid,
+                "flow": "xtls-rprx-vision"
+              }]
+            }]
+          },
+          "streamSettings": {
+            "network": "tcp",
+            "security": "reality",
+            "realitySettings": {
+              "serverName": "www.bing.com",
+              "fingerprint": "chrome",
+              "publicKey": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
+              "shortId": "9864"
+            }
+          },
+          "tag": "proxy"
+        }
+      ],
+      "routing": {"rules": []},
+      "remarks": `MAGAMIX VPN • ${subId}`
+    };
+    
+    const base64Config = Buffer.from(JSON.stringify(config, null, 2)).toString('base64');
+    const happUrl = `happ://add/${base64Config}`;
+    
+    // Показываем все данные для отладки
+    res.send(`<pre>${JSON.stringify(config, null, 2)}</pre>
+              <hr>
+              <textarea style="width:100%;height:100px">${base64Config}</textarea>
+              <hr>
+              <a href="${happUrl}">HAPP Link</a>`);
+    
+  } catch (err) {
+    res.status(500).send(`Ошибка: ${err.message}`);
+  }
+});
+
 // Обёртка для Happ deeplink
 app.get('/url', (req, res) => {
   const happUrl = req.query.url;
