@@ -67,7 +67,6 @@ app.get('/', (req, res) => {
 // Основной эндпоинт — чистый base64 JSON с реальными данными
 app.get('/sub/:subId', async (req, res) => {
   const subId = (req.params.subId || '').trim();
-
   console.log(`[SUB] Запрос подписки: subId="${subId}"`);
 
   if (subId.length < 8 || !/^[0-9a-fA-F]+$/.test(subId)) {
@@ -95,16 +94,8 @@ app.get('/sub/:subId', async (req, res) => {
         "queryStrategy": "UseIPv4",
         "servers": [
           "1.1.1.1",
-          {
-            "address": "1.1.1.1",
-            "domains": [],
-            "port": 53
-          },
-          {
-            "address": "8.8.8.8",
-            "domains": [],
-            "port": 53
-          }
+          { "address": "1.1.1.1", "domains": [], "port": 53 },
+          { "address": "8.8.8.8", "domains": [], "port": 53 }
         ]
       },
       "inbounds": [
@@ -112,42 +103,23 @@ app.get('/sub/:subId', async (req, res) => {
           "listen": "127.0.0.1",
           "port": 10808,
           "protocol": "socks",
-          "settings": {
-            "auth": "noauth",
-            "udp": true,
-            "userLevel": 8
-          },
-          "sniffing": {
-            "destOverride": ["http", "tls", "quic"],
-            "enabled": true
-          },
-         "tag": "socks"
+          "settings": { "auth": "noauth", "udp": true, "userLevel": 8 },
+          "sniffing": { "destOverride": ["http", "tls", "quic"], "enabled": true },
+          "tag": "socks"
         },
         {
           "listen": "127.0.0.1",
           "port": 10809,
           "protocol": "http",
-          "settings": {
-            "userLevel": 8
-          },
-          "sniffing": {
-            "destOverride": ["http", "tls", "quic"],
-            "enabled": true
-          },
+          "settings": { "userLevel": 8 },
+          "sniffing": { "destOverride": ["http", "tls", "quic"], "enabled": true },
           "tag": "http"
         }
       ],
-      "log": {
-        "loglevel": "error"
-      },
+      "log": { "loglevel": "error" },
       "outbounds": [
         {
-          "mux": {
-            "concurrency": -1,
-            "enabled": false,
-            "xudpConcurrency": 8,
-            "xudpProxyUDP443": ""
-          },
+          "mux": { "concurrency": -1, "enabled": false, "xudpConcurrency": 8, "xudpProxyUDP443": "" },
           "protocol": "vless",
           "settings": {
             "vnext": [
@@ -180,10 +152,6 @@ app.get('/sub/:subId', async (req, res) => {
               "shortIds": ["9864"],
               "publicKey": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
               "spiderX": "/"
-            },
-            "tlsSettings": {
-              "serverName": "www.bing.com",
-              "fingerprint": "chrome"
             }
           },
           "tag": "proxy",
@@ -200,16 +168,8 @@ app.get('/sub/:subId', async (req, res) => {
       ],
       "policy": {
         "levels": {
-          "0": {
-            "statsUserDownlink": true,
-            "statsUserUplink": true
-          },
-          "8": {
-            "connIdle": 300,
-            "downlinkOnly": 1,
-            "handshake": 4,
-            "uplinkOnly": 1
-          }
+          "0": { "statsUserDownlink": true, "statsUserUplink": true },
+          "8": { "connIdle": 300, "downlinkOnly": 1, "handshake": 4, "uplinkOnly": 1 }
         },
         "system": {
           "statsInboundDownlink": true,
@@ -230,7 +190,7 @@ app.get('/sub/:subId', async (req, res) => {
       },
       "stats": {}
     };
-    
+
     const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
 
     res.set({
