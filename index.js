@@ -145,7 +145,7 @@ app.get('/sub/:subId', async (req, res) => {
               "dest": "www.bing.com:443",
               "xver": 0,
               "serverNames": ["www.bing.com"],
-              "privateKey": "",
+              "privateKey": "mJr8o7ZFvzeE3C0JlixbIFbU6FcC6yxzIfwsc776BVw",
               "minClientVer": "",
               "maxClientVer": "",
               "maxTimeDiff": 0,
