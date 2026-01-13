@@ -63,11 +63,11 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Основной эндпоинт подписки — plain text + реальный UUID из Flask API
+// Основной эндпоинт подписки — полная конфигурация Xray/V2Ray
 app.get('/sub/:subId', async (req, res) => {
   const subId = (req.params.subId || '').trim();
 
-  console.log(`[SUB] Запрос подписки: subId="${subId}" (длина=${subId.length})`);
+  console.log(`[SUB] Запрос подписки: subId="${subId}"`);
 
   if (subId.length < 8 || !/^[0-9a-fA-F]+$/.test(subId)) {
     return res.status(400).send('Invalid subscription ID');
@@ -87,52 +87,184 @@ app.get('/sub/:subId', async (req, res) => {
       console.log(`[API] Получен UUID: ${realUuid}`);
     } else {
       console.error('Не удалось получить UUID:', data.error || 'Нет ответа');
-      // Можно временно использовать тестовый UUID для отладки
-      // realUuid = "12345678-1234-1234-1234-123456789012";
+      // Для отладки используем тестовый UUID
+      realUuid = "12345678-1234-1234-1234-123456789012";
     }
 
-    // Рассчитываем дату истечения (90 дней от текущего момента)
-    const now = Date.now();
-    const expireTime = now + (90 * 24 * 60 * 60 * 1000);
-    
-    // Форматируем для удобочитаемости
-    const expireDate = new Date(expireTime);
-    console.log(`[CONFIG] Срок действия до: ${expireDate.toISOString()}`);
-
-    // JSON-конфиг для Happ в правильном формате
+    // Полная конфигурация Xray/V2Ray для HAPP
     const config = {
-      "name": "MAGAMIX VPN Premium",
-      "expire": Math.floor(expireTime / 1000), // HAPP часто ожидает секунды, не миллисекунды
-      "traffic": {
-        "total": 0, // 0 = безлимит
-        "used": 0
+      "dns": {
+        "hosts": {
+          "domain:googleapis.cn": "googleapis.com"
+        },
+        "queryStrategy": "UseIPv4",
+        "servers": [
+          "1.1.1.1",
+          {
+            "address": "1.1.1.1",
+            "domains": [],
+            "port": 53
+          },
+          {
+            "address": "8.8.8.8",
+            "domains": [],
+            "port": 53
+          }
+        ]
+      },
+      "inbounds": [
+        {
+          "listen": "127.0.0.1",
+          "port": 10808,
+          "protocol": "socks",
+          "settings": {
+            "auth": "noauth",
+            "udp": true,
+            "userLevel": 8
+          },
+          "sniffing": {
+            "destOverride": ["http", "tls", "quic"],
+            "enabled": true
+          },
+          "tag": "socks"
+        },
+        {
+          "listen": "127.0.0.1",
+          "port": 10809,
+          "protocol": "http",
+          "settings": {
+            "userLevel": 8
+          },
+          "sniffing": {
+            "destOverride": ["http", "tls", "quic"],
+            "enabled": true
+          },
+          "tag": "http"
+        }
+      ],
+      "log": {
+        "loglevel": "warning"
       },
       "outbounds": [
         {
+          "mux": {
+            "concurrency": -1,
+            "enabled": false,
+            "xudpConcurrency": 8,
+            "xudpProxyUDP443": ""
+          },
           "protocol": "vless",
-          "address": "31.130.131.214",
-          "port": 2053,
-          "uuid": realUuid,
-          "security": "reality",
-          "sni": "www.bing.com",
-          "fp": "chrome",
-          "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-          "sid": "9864",
-          "remark": "🇳🇱 Нидерланды",
-          "flow": ""
+          "settings": {
+            "vnext": [
+              {
+                "address": "31.130.131.214",
+                "port": 2053,
+                "users": [
+                  {
+                    "encryption": "none",
+                    "flow": "xtls-rprx-vision",
+                    "id": realUuid,
+                    "level": 8,
+                    "security": "auto"
+                  }
+                ]
+              }
+            ]
+          },
+          "streamSettings": {
+            "network": "tcp",
+            "realitySettings": {
+              "allowInsecure": false,
+              "fingerprint": "chrome",
+              "publicKey": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
+              "serverName": "www.bing.com",
+              "shortId": "9864",
+              "show": false,
+              "spiderX": "/"
+            },
+            "security": "reality",
+            "tcpSettings": {
+              "header": {
+                "type": "none"
+              }
+            }
+          },
+          "tag": "proxy"
+        },
+        {
+          "protocol": "freedom",
+          "settings": {
+            "domainStrategy": "UseIP"
+          },
+          "tag": "direct"
+        },
+        {
+          "protocol": "blackhole",
+          "settings": {
+            "response": {
+              "type": "http"
+            }
+          },
+          "tag": "block"
         }
       ],
-      // Добавляем дополнительные поля для совместимости
-      "version": "1.0",
-      "created": Math.floor(now / 1000)
+      "policy": {
+        "levels": {
+          "0": {
+            "statsUserDownlink": true,
+            "statsUserUplink": true
+          },
+          "8": {
+            "connIdle": 300,
+            "downlinkOnly": 1,
+            "handshake": 4,
+            "uplinkOnly": 1
+          }
+        },
+        "system": {
+          "statsInboundDownlink": true,
+          "statsInboundUplink": true,
+          "statsOutboundDownlink": true,
+          "statsOutboundUplink": true
+        }
+      },
+      "remarks": `MAGAMIX VPN Premium • ${subId}`,
+      "routing": {
+        "domainStrategy": "IPIfNonMatch",
+        "rules": [
+          {
+            "type": "field",
+            "ip": ["1.1.1.1"],
+            "outboundTag": "proxy",
+            "port": "53"
+          },
+          {
+            "type": "field",
+            "ip": ["8.8.8.8"],
+            "outboundTag": "direct",
+            "port": "53"
+          },
+          {
+            "type": "field",
+            "domain": ["geosite:category-ads-all"],
+            "outboundTag": "block"
+          },
+          {
+            "type": "field",
+            "protocol": ["bittorrent"],
+            "outboundTag": "direct"
+          }
+        ]
+      },
+      "stats": {}
     };
 
     // Кодируем в base64
     const jsonString = JSON.stringify(config, null, 2);
-    console.log(`[CONFIG] JSON: ${jsonString.substring(0, 200)}...`);
+    console.log(`[CONFIG] Длина JSON: ${jsonString.length} символов`);
     
     const base64Config = Buffer.from(jsonString).toString('base64');
-    console.log(`[CONFIG] Base64 длина: ${base64Config.length}`);
+    console.log(`[CONFIG] Base64 длина: ${base64Config.length} символов`);
 
     // Отправляем в правильном формате
     res.set({
@@ -144,30 +276,70 @@ app.get('/sub/:subId', async (req, res) => {
     // Отправляем ТОЛЬКО base64 строку
     res.send(base64Config);
     
-    console.log(`[SUB] Подписка отправлена для subId: ${subId}`);
+    console.log(`[SUB] Полная конфигурация отправлена для subId: ${subId}`);
     
   } catch (err) {
     console.error('[SUB ERROR]', err.message);
     console.error('[SUB ERROR] Stack:', err.stack);
     
-    // В случае ошибки можно вернуть тестовую конфигурацию
+    // В случае ошибки возвращаем упрощенную, но валидную конфигурацию
     const fallbackConfig = {
-      "name": "MAGAMIX VPN Test",
-      "expire": Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000),
-      "traffic": {"total": 0, "used": 0},
-      "outbounds": [{
-        "protocol": "vless",
-        "address": "31.130.131.214",
-        "port": 2053,
-        "uuid": "12345678-1234-1234-1234-123456789012",
-        "security": "reality",
-        "sni": "www.bing.com",
-        "fp": "chrome",
-        "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-        "sid": "9864",
-        "remark": "🇳🇱 Нидерланды (Test)",
-        "flow": ""
-      }]
+      "dns": {
+        "servers": ["1.1.1.1", "8.8.8.8"]
+      },
+      "inbounds": [
+        {
+          "port": 10808,
+          "protocol": "socks",
+          "settings": {
+            "auth": "noauth",
+            "udp": true
+          },
+          "tag": "socks"
+        },
+        {
+          "port": 10809,
+          "protocol": "http",
+          "tag": "http"
+        }
+      ],
+      "log": {
+        "loglevel": "warning"
+      },
+      "outbounds": [
+        {
+          "protocol": "vless",
+          "settings": {
+            "vnext": [
+              {
+                "address": "31.130.131.214",
+                "port": 2053,
+                "users": [
+                  {
+                    "id": "12345678-1234-1234-1234-123456789012",
+                    "flow": "xtls-rprx-vision"
+                  }
+                ]
+              }
+            ]
+          },
+          "streamSettings": {
+            "network": "tcp",
+            "security": "reality",
+            "realitySettings": {
+              "serverName": "www.bing.com",
+              "fingerprint": "chrome",
+              "publicKey": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
+              "shortId": "9864"
+            }
+          },
+          "tag": "proxy"
+        }
+      ],
+      "routing": {
+        "rules": []
+      },
+      "remarks": "MAGAMIX VPN (Fallback)"
     };
     
     const fallbackBase64 = Buffer.from(JSON.stringify(fallbackConfig)).toString('base64');
