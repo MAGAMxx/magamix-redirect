@@ -15,30 +15,14 @@ const limiter = rateLimit({
 app.use('/sub/', limiter);
 
 // Конфигурация
-const config = {
-      "name": "MAGAMIX VPN ",
-      "expire": expireTime,
-      "traffic": {
-        "total": 150, // unlimited
-        "used": 0
-      },
-      "outbounds": [
-        {
-          "protocol": "vless",
-          "address": "31.130.131.214",
-          "port": 2053,
-          "uuid": realUuid,
-          "security": "reality",
-          "sni": "www.bing.com",
-          "fp": "chrome",
-          "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-          "sid": "9864",
-          "remark": "🇳🇱Нидерланды"
-        }
-      ]
-    };
+const CONFIG = {
+  HAPP_NAME: "MAGAMIX VPN",
+  HAPP_LOGO: "https://cdn-icons-png.flaticon.com/512/3067/3067256.png",
+  SERVER_LOCATION: "Reality NL Premium",
+  SUPPORT_URL: "https://t.me/nejnayatp3",
+  WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
+};
 
-    const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
 // Главная страница
 app.get('/', (req, res) => {
   res.send(`
@@ -80,7 +64,7 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Основной эндпоинт подписки — plain text + реальный UUID из Flask API
+// Основной эндпоинт подписки — base64 JSON (Happ увидит имя, срок, трафик и сервер)
 app.get('/sub/:subId', async (req, res) => {
   const subId = (req.params.subId || '').trim();
 
@@ -96,24 +80,24 @@ app.get('/sub/:subId', async (req, res) => {
     const response = await fetch(apiUrl);
     const data = await response.json();
 
-    let realUuid = "00000000-0000-0000-0000-000000000000";
+    let realUuid = "00000000-0000-0000-0000-000000000000"; // fallback
     if (!data.error && data.uuid) {
       realUuid = data.uuid;
     } else {
       console.error('Не удалось получить UUID:', data.error || 'Нет ответа');
     }
 
-    // Реальный срок (заглушка 90 дней — потом заменишь на данные из базы)
+    // Реальный срок (заглушка 90 дней — потом подключишь из базы)
     const now = Date.now();
-    const expireTime = now + 90 * 24 * 60 * 60 * 1000; // в миллисекундах
+    const expireTime = now + 90 * 24 * 60 * 60 * 1000; // миллисекунды
 
     // JSON-конфиг для Happ (это то, что он ожидает)
     const config = {
       "name": "MAGAMIX NL Premium 🇳🇱",
-      "expire": expireTime,                // ← дата истечения в ms (Happ покажет таймер)
+      "expire": expireTime,
       "traffic": {
-        "total": 0,                        // 0 = Unlimited
-        "used": 0                          // использованный трафик (можно потом подтягивать)
+        "total": 0,      // 0 = Unlimited
+        "used": 0
       },
       "outbounds": [
         {
@@ -132,7 +116,7 @@ app.get('/sub/:subId', async (req, res) => {
       ]
     };
 
-    // Кодируем в base64 — это и есть ответ для Happ
+    // Кодируем в base64 — это единственный ответ
     const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
 
     res.set({
@@ -140,7 +124,6 @@ app.get('/sub/:subId', async (req, res) => {
       'Cache-Control': 'no-cache, no-store, must-revalidate'
     });
 
-    // Отправляем ТОЛЬКО base64-строку — без лишнего текста!
     res.send(base64Config);
   } catch (err) {
     console.error('[SUB ERROR]', err.message);
