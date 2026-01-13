@@ -96,16 +96,22 @@ app.get('/sub/:subId', async (req, res) => {
       },
       "outbounds": [
         {
-          "protocol": "vless",
-          "address": "31.130.131.214",
-          "port": 2053,
+          "tag": "proxy",
+          "type": "vless",
+          "server": "31.130.131.214",
+          "server_port": 2053,
           "uuid": realUuid,
-          "security": "reality",
-          "sni": "www.bing.com",
-          "fp": "chrome",
-          "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-          "sid": "9864",
           "flow": "",
+          "tls": {
+            "enabled": true,
+            "server_name": "www.bing.com",
+            "reality": {
+              "enabled": true,
+              "public_key": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
+              "short_id": ["9864"]
+            },
+            "fingerprint": "chrome"
+          },
           "remark": "🇳🇱Нидерланды"
         }
       ]
