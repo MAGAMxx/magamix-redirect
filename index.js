@@ -88,11 +88,57 @@ app.get('/sub/:subId', async (req, res) => {
     const expireTime = data.expiryTime;
 
     const config = {
-      "name": "MAGAMIX NL Premium 🇳🇱",
-      "expire": expireTime,
-      "traffic": {
-        "total": 0,
-        "used": 0
+      "dns": {
+        "hosts": {
+          "domain:googleapis.cn": "googleapis.com"
+        },
+        "queryStrategy": "UseIPv4",
+        "servers": [
+          "1.1.1.1",
+          {
+            "address": "1.1.1.1",
+            "domains": [],
+            "port": 53
+          },
+          {
+            "address": "8.8.8.8",
+            "domains": [],
+            "port": 53
+          }
+        ]
+      },
+      "inbounds": [
+        {
+          "listen": "127.0.0.1",
+          "port": 10808,
+          "protocol": "socks",
+          "settings": {
+            "auth": "noauth",
+            "udp": true,
+            "userLevel": 8
+          },
+          "sniffing": {
+            "destOverride": ["http", "tls", "quic"],
+            "enabled": true
+          },
+         "tag": "socks"
+        },
+        {
+          "listen": "127.0.0.1",
+          "port": 10809,
+          "protocol": "http",
+          "settings": {
+            "userLevel": 8
+          },
+          "sniffing": {
+            "destOverride": ["http", "tls", "quic"],
+            "enabled": true
+          },
+          "tag": "http"
+        }
+      ],
+      "log": {
+        "loglevel": "error"
       },
       "outbounds": [
         {
@@ -112,7 +158,8 @@ app.get('/sub/:subId', async (req, res) => {
                   {
                     "id": realUuid,
                     "encryption": "none",
-                    "level": 0
+                    "flow": "",
+                    "level": 8
                   }
                 ]
               }
@@ -151,7 +198,37 @@ app.get('/sub/:subId', async (req, res) => {
           "tag": "block"
         }
       ],
-      "remarks": "🇳🇱Нидерланды"
+      "policy": {
+        "levels": {
+          "0": {
+            "statsUserDownlink": true,
+            "statsUserUplink": true
+          },
+          "8": {
+            "connIdle": 300,
+            "downlinkOnly": 1,
+            "handshake": 4,
+            "uplinkOnly": 1
+          }
+        },
+        "system": {
+          "statsInboundDownlink": true,
+          "statsInboundUplink": true,
+          "statsOutboundDownlink": true,
+          "statsOutboundUplink": true
+        }
+      },
+      "remarks": "🇳🇱Нидерланды",
+      "routing": {
+        "domainStrategy": "IPIfNonMatch",
+        "rules": [
+          {
+            "inboundTag": ["metrics_in"],
+            "outboundTag": "metrics_out"
+          }
+        ]
+      },
+      "stats": {}
     };
     
     const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
