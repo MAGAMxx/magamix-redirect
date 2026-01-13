@@ -23,7 +23,7 @@ const CONFIG = {
   WEBSITE: "https://t.me/MAGAMIX_VPN_bot"
 };
 
-// Главная страница (без изменений)
+// Главная страница
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -64,7 +64,7 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Основной эндпоинт — чистый base64 JSON без заглушек
+// Основной эндпоинт — чистый base64 JSON с реальными данными
 app.get('/sub/:subId', async (req, res) => {
   const subId = (req.params.subId || '').trim();
 
@@ -75,7 +75,6 @@ app.get('/sub/:subId', async (req, res) => {
   }
 
   try {
-    // Получаем реальный UUID и срок из Flask API (добавь в Flask: expiryTime)
     const apiUrl = `http://31.130.131.214:8000/get_uuid?sub_id=${subId}`;
     const response = await fetch(apiUrl);
     const data = await response.json();
@@ -86,15 +85,14 @@ app.get('/sub/:subId', async (req, res) => {
     }
 
     const realUuid = data.uuid;
-    const expireTime = data.expiryTime; // миллисекунды до истечения (timestamp)
+    const expireTime = data.expiryTime;
 
-    // JSON для Happ
     const config = {
       "name": "MAGAMIX NL Premium 🇳🇱",
       "expire": expireTime,
       "traffic": {
-        "total": 0,     // Unlimited
-        "used": 0       // Реальный трафик подключишь позже
+        "total": 0,
+        "used": 0
       },
       "outbounds": [
         {
@@ -127,7 +125,7 @@ app.get('/sub/:subId', async (req, res) => {
   }
 });
 
-// Обёртка deeplink
+// Обёртка для deeplink
 app.get('/url', (req, res) => {
   const happUrl = req.query.url;
   if (happUrl && happUrl.startsWith('happ://add/')) {
