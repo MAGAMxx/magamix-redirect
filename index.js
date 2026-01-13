@@ -1,6 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const fetch = require('node-fetch'); // Обязательно добавь в package.json: "node-fetch": "^2.6.7"
+const fetch = require('node-fetch');
 
 const app = express();
 
@@ -14,31 +14,14 @@ const limiter = rateLimit({
 });
 app.use('/sub/', limiter);
 
-// Конфигурация
-const config = {
-      "name": "MAGAMIX VPN ",
-      "expire": expireTime,
-      "traffic": {
-        "total": 150, // unlimited
-        "used": 0
-      },
-      "outbounds": [
-        {
-          "protocol": "vless",
-          "address": "31.130.131.214",
-          "port": 2053,
-          "uuid": realUuid,
-          "security": "reality",
-          "sni": "www.bing.com",
-          "fp": "chrome",
-          "pbk": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-          "sid": "9864",
-          "remark": "🇳🇱Нидерланды"
-        }
-      ]
-    };
+// Конфигурация приложения
+const CONFIG = {
+  HAPP_NAME: "MAGAMIX VPN",
+  HAPP_LOGO: "https://your-logo-url.com/logo.png", // Замените на реальный URL
+  SERVER_LOCATION: "🇳🇱 Нидерланды",
+  SUPPORT_URL: "https://t.me/MAGAMIX_VPN_support"
+};
 
-    const base64Config = Buffer.from(JSON.stringify(config)).toString('base64');
 // Главная страница
 app.get('/', (req, res) => {
   res.send(`
@@ -160,7 +143,7 @@ app.get('/url', (req, res) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Открытие в Happ</title>
         <style>
-          body { font-family:system-ui,sans-serif; text-align:center; padding:60px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+          body { font-family:system-ui,sans-serif; text-align:center; padding:60px 20px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; }
           .logo { width:90px; height:90px; border-radius:20px; margin-bottom:24px; }
           .loader { border:6px solid rgba(255,255,255,0.3); border-top:6px solid white; border-radius:50%; width:60px; height:60px; animation:spin 1.2s linear infinite; margin:40px auto; }
           @keyframes spin { 0% {transform:rotate(0deg);} 100% {transform:rotate(360deg);} }
