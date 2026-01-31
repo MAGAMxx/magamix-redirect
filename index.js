@@ -1,491 +1,124 @@
-const express = require('express');
-const rateLimit = require('express-rate-limit');
-const fetch = require('node-fetch');
+const {
+    default: makeWASocket,
+    useMultiFileAuthState,
+    DisconnectReason,
+    downloadMediaMessage,
+    fetchLatestBaileysVersion
+} = require('@whiskeysockets/baileys');
+const { Boom } = require('@hapi/boom');
+const pino = require('pino');
+const qrcode = require('qrcode-terminal');
+const fs = require('fs');
+const path = require('path');
 
-const app = express();
+const logger = pino({ level: 'silent' });
+const MY_NUMBER = '79283376737@s.whatsapp.net';
 
-// Rate Limit — защита от спама
-const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 минута
-  max: 45,
-  message: { error: "Слишком много запросов. Попробуйте позже" },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/sub/', limiter);
+async function connectToWhatsApp() {
+    const { state, saveCreds } = await useMultiFileAuthState('./auth_info_multi');
+    const { version } = await fetchLatestBaileysVersion();
 
-// Конфигурация приложения
-const CONFIG = {
-  HAPP_NAME: "MAGAMIX VPN",
-  HAPP_LOGO: "https://your-logo-url.com/logo.png", // Замените на реальный URL
-  SERVER_LOCATION: "🇳🇱 Нидерланды",
-  SUPPORT_URL: "https://t.me/MAGAMIX_VPN_support"
-};
-
-// Главная страница
-app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ru">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${CONFIG.HAPP_NAME} • ${CONFIG.SERVER_LOCATION}</title>
-      <style>
-        body { font-family: system-ui, sans-serif; max-width:900px; margin:0 auto; padding:30px 20px; text-align:center; background:linear-gradient(135deg,#667eea,#764ba2); color:white; min-height:100vh; display:flex; flex-direction:column; justify-content:center; }
-        .logo { width:120px; height:120px; border-radius:24px; box-shadow:0 10px 30px rgba(0,0,0,0.4); margin-bottom:24px; }
-        h1 { font-size:2.8rem; margin:0 0 12px; }
-        h2 { font-size:1.6rem; opacity:0.9; margin:0 0 40px; }
-        .features { background:rgba(255,255,255,0.15); backdrop-filter:blur(10px); padding:24px; border-radius:20px; margin:30px 0; text-align:left; max-width:600px; margin-left:auto; margin-right:auto; }
-        .btn { display:inline-block; background:white; color:#4f46e5; padding:16px 36px; border-radius:50px; text-decoration:none; font-weight:bold; font-size:1.2rem; margin:12px; box-shadow:0 8px 20px rgba(0,0,0,0.3); transition:all 0.3s; }
-        .btn:hover { transform:translateY(-4px); box-shadow:0 12px 30px rgba(0,0,0,0.4); }
-      </style>
-    </head>
-    <body>
-      <img src="${CONFIG.HAPP_LOGO}" class="logo" alt="${CONFIG.HAPP_NAME}">
-      <h1>${CONFIG.HAPP_NAME}</h1>
-      <h2>${CONFIG.SERVER_LOCATION}</h2>
-      <div class="features">
-        <h3>🚀 Премиум VPN</h3>
-        <p>• Максимальная скорость и стабильность</p>
-        <p>• Полная анонимность и защита</p>
-        <p>• Безлимитный трафик</p>
-        <p>• Поддержка 24/7</p>
-      </div>
-      <p style="font-size:1.2rem; margin:40px 0 20px;">Получите подписку через бота:</p>
-      <a href="https://t.me/${process.env.BOT_USERNAME || 'MAGAMIX_VPN_bot'}" class="btn">📱 Открыть бота</a>
-      <div style="margin-top:60px; font-size:0.95rem; opacity:0.85;">
-        <p>© ${new Date().getFullYear()} ${CONFIG.HAPP_NAME}</p>
-        <p>Техподдержка: <a href="${CONFIG.SUPPORT_URL}" style="color:white; text-decoration:none;">${CONFIG.SUPPORT_URL.replace('https://','')}</a></p>
-      </div>
-    </body>
-    </html>
-  `);
-});
-
-// Основной эндпоинт подписки — полная конфигурация Xray/V2Ray
-app.get('/sub/:subId', async (req, res) => {
-  const subId = (req.params.subId || '').trim();
-
-  console.log(`[SUB] Запрос подписки: subId="${subId}"`);
-
-  if (subId.length < 8 || !/^[0-9a-fA-F]+$/.test(subId)) {
-    return res.status(400).send('Invalid subscription ID');
-  }
-
-  try {
-    // Получаем реальный UUID из Flask API
-    const apiUrl = `http://31.130.131.214:8000/get_uuid?sub_id=${subId}`;
-    console.log(`[API] Запрос к: ${apiUrl}`);
-    
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-
-    let realUuid = "00000000-0000-0000-0000-000000000000";
-    if (!data.error && data.uuid) {
-      realUuid = data.uuid;
-      console.log(`[API] Получен UUID: ${realUuid}`);
-    } else {
-      console.error('Не удалось получить UUID:', data.error || 'Нет ответа');
-      // Для отладки используем тестовый UUID
-      realUuid = "12345678-1234-1234-1234-123456789012";
-    }
-
-    // Полная конфигурация Xray/V2Ray для HAPP
-    const config = {
-      "dns": {
-        "hosts": {
-          "domain:googleapis.cn": "googleapis.com"
-        },
-        "queryStrategy": "UseIPv4",
-        "servers": [
-          "1.1.1.1",
-          {
-            "address": "1.1.1.1",
-            "domains": [],
-            "port": 53
-          },
-          {
-            "address": "8.8.8.8",
-            "domains": [],
-            "port": 53
-          }
-        ]
-      },
-      "inbounds": [
-        {
-          "listen": "127.0.0.1",
-          "port": 10808,
-          "protocol": "socks",
-          "settings": {
-            "auth": "noauth",
-            "udp": true,
-            "userLevel": 8
-          },
-          "sniffing": {
-            "destOverride": ["http", "tls", "quic"],
-            "enabled": true
-          },
-          "tag": "socks"
-        },
-        {
-          "listen": "127.0.0.1",
-          "port": 10809,
-          "protocol": "http",
-          "settings": {
-            "userLevel": 8
-          },
-          "sniffing": {
-            "destOverride": ["http", "tls", "quic"],
-            "enabled": true
-          },
-          "tag": "http"
-        }
-      ],
-      "log": {
-        "loglevel": "warning"
-      },
-      "outbounds": [
-        {
-          "mux": {
-            "concurrency": -1,
-            "enabled": false,
-            "xudpConcurrency": 8,
-            "xudpProxyUDP443": ""
-          },
-          "protocol": "vless",
-          "settings": {
-            "vnext": [
-              {
-                "address": "31.130.131.214",
-                "port": 2053,
-                "users": [
-                  {
-                    "encryption": "none",
-                    "flow": "xtls-rprx-vision",
-                    "id": realUuid,
-                    "level": 8,
-                    "security": "auto"
-                  }
-                ]
-              }
-            ]
-          },
-          "streamSettings": {
-            "network": "tcp",
-            "realitySettings": {
-              "allowInsecure": false,
-              "fingerprint": "chrome",
-              "publicKey": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-              "serverName": "www.bing.com",
-              "shortId": "9864",
-              "show": false,
-              "spiderX": "/"
-            },
-            "security": "reality",
-            "tcpSettings": {
-              "header": {
-                "type": "none"
-              }
-            }
-          },
-          "tag": "proxy"
-        },
-        {
-          "protocol": "freedom",
-          "settings": {
-            "domainStrategy": "UseIP"
-          },
-          "tag": "direct"
-        },
-        {
-          "protocol": "blackhole",
-          "settings": {
-            "response": {
-              "type": "http"
-            }
-          },
-          "tag": "block"
-        }
-      ],
-      "policy": {
-        "levels": {
-          "0": {
-            "statsUserDownlink": true,
-            "statsUserUplink": true
-          },
-          "8": {
-            "connIdle": 300,
-            "downlinkOnly": 1,
-            "handshake": 4,
-            "uplinkOnly": 1
-          }
-        },
-        "system": {
-          "statsInboundDownlink": true,
-          "statsInboundUplink": true,
-          "statsOutboundDownlink": true,
-          "statsOutboundUplink": true
-        }
-      },
-      "remarks": `MAGAMIX VPN Premium • ${subId}`,
-      "routing": {
-        "domainStrategy": "IPIfNonMatch",
-        "rules": [
-          {
-            "type": "field",
-            "ip": ["1.1.1.1"],
-            "outboundTag": "proxy",
-            "port": "53"
-          },
-          {
-            "type": "field",
-            "ip": ["8.8.8.8"],
-            "outboundTag": "direct",
-            "port": "53"
-          },
-          {
-            "type": "field",
-            "domain": ["geosite:category-ads-all"],
-            "outboundTag": "block"
-          },
-          {
-            "type": "field",
-            "protocol": ["bittorrent"],
-            "outboundTag": "direct"
-          }
-        ]
-      },
-      "stats": {}
-    };
-
-    // Кодируем в base64
-    const jsonString = JSON.stringify(config, null, 2);
-    console.log(`[CONFIG] Длина JSON: ${jsonString.length} символов`);
-    
-    const base64Config = Buffer.from(jsonString).toString('base64');
-    console.log(`[CONFIG] Base64 длина: ${base64Config.length} символов`);
-
-    // Отправляем в правильном формате
-    res.set({
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Content-Length': Buffer.byteLength(base64Config)
+    const sock = makeWASocket({
+        version,
+        logger,
+        printQRInTerminal: false,
+        auth: state,
+        markOnlineOnConnect: true
     });
 
-    // Отправляем ТОЛЬКО base64 строку
-    res.send(base64Config);
-    
-    console.log(`[SUB] Полная конфигурация отправлена для subId: ${subId}`);
-    
-  } catch (err) {
-    console.error('[SUB ERROR]', err.message);
-    console.error('[SUB ERROR] Stack:', err.stack);
-    
-    // В случае ошибки возвращаем упрощенную, но валидную конфигурацию
-    const fallbackConfig = {
-      "dns": {
-        "servers": ["1.1.1.1", "8.8.8.8"]
-      },
-      "inbounds": [
-        {
-          "port": 10808,
-          "protocol": "socks",
-          "settings": {
-            "auth": "noauth",
-            "udp": true
-          },
-          "tag": "socks"
-        },
-        {
-          "port": 10809,
-          "protocol": "http",
-          "tag": "http"
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect, qr } = update;
+        if (qr) {
+            console.log('\nСКАНИРУЙ QR НИЖЕ\n');
+            qrcode.generate(qr, { small: true });
         }
-      ],
-      "log": {
-        "loglevel": "warning"
-      },
-      "outbounds": [
-        {
-          "protocol": "vless",
-          "settings": {
-            "vnext": [
-              {
-                "address": "31.130.131.214",
-                "port": 2053,
-                "users": [
-                  {
-                    "id": "12345678-1234-1234-1234-123456789012",
-                    "flow": "xtls-rprx-vision"
-                  }
-                ]
-              }
-            ]
-          },
-          "streamSettings": {
-            "network": "tcp",
-            "security": "reality",
-            "realitySettings": {
-              "serverName": "www.bing.com",
-              "fingerprint": "chrome",
-              "publicKey": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-              "shortId": "9864"
-            }
-          },
-          "tag": "proxy"
+        if (connection === 'close') {
+            const shouldReconnect = (lastDisconnect?.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+            if (shouldReconnect) setTimeout(connectToWhatsApp, 5000);
+        } else if (connection === 'open') {
+            console.log('Подключено! Жду .одн');
         }
-      ],
-      "routing": {
-        "rules": []
-      },
-      "remarks": "MAGAMIX VPN (Fallback)"
-    };
-    
-    const fallbackBase64 = Buffer.from(JSON.stringify(fallbackConfig)).toString('base64');
-    res.send(fallbackBase64);
-  }
-});
+    });
 
-app.get('/debug/:subId', async (req, res) => {
-  const subId = (req.params.subId || '').trim();
-  
-  try {
-    // Получаем UUID
-    const apiUrl = `http://31.130.131.214:8000/get_uuid?sub_id=${subId}`;
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-    
-    let realUuid = "12345678-1234-1234-1234-123456789012"; // тестовый по умолчанию
-    if (!data.error && data.uuid) {
-      realUuid = data.uuid;
-    }
-    
-    // Создаем полную конфигурацию
-    const config = {
-      "dns": {
-        "servers": ["1.1.1.1", "8.8.8.8"]
-      },
-      "inbounds": [
-        {
-          "port": 10808,
-          "protocol": "socks",
-          "settings": {"auth": "noauth", "udp": true},
-          "tag": "socks"
-        },
-        {
-          "port": 10809,
-          "protocol": "http",
-          "tag": "http"
+    sock.ev.on('messages.upsert', async (m) => {
+        const msg = m.messages[0];
+        if (!msg.message) return;
+
+        const from = msg.key.remoteJid;
+        const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').trim().toLowerCase();
+
+        console.log(`Получено сообщение: "${text}" | fromMe: ${msg.key.fromMe} | sender: ${msg.key.participant || from}`);
+
+        if (text !== '.одн' || !msg.key.fromMe) return;
+
+        try {
+            // Удаляем команду у всех
+            await sock.sendMessage(from, { delete: msg.key });
+            console.log('Команда удалена');
+        } catch (delErr) {
+            console.error('Ошибка удаления:', delErr);
         }
-      ],
-      "log": {"loglevel": "warning"},
-      "outbounds": [
-        {
-          "protocol": "vless",
-          "settings": {
-            "vnext": [{
-              "address": "31.130.131.214",
-              "port": 2053,
-              "users": [{
-                "id": realUuid,
-                "flow": "xtls-rprx-vision"
-              }]
-            }]
-          },
-          "streamSettings": {
-            "network": "tcp",
-            "security": "reality",
-            "realitySettings": {
-              "serverName": "www.bing.com",
-              "fingerprint": "chrome",
-              "publicKey": "P2Q_Uq49DV8iEiwiRxNe0UYKCXL--sp-nU0pihntn30",
-              "shortId": "9864"
-            }
-          },
-          "tag": "proxy"
+
+        const quoted = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+        if (!quoted) {
+            await sock.sendMessage(MY_NUMBER, { text: 'Нет quoted сообщения' });
+            return;
         }
-      ],
-      "routing": {"rules": []},
-      "remarks": `MAGAMIX VPN • ${subId}`
-    };
-    
-    const base64Config = Buffer.from(JSON.stringify(config, null, 2)).toString('base64');
-    const happUrl = `happ://add/${base64Config}`;
-    
-    // Показываем все данные для отладки
-    res.send(`<pre>${JSON.stringify(config, null, 2)}</pre>
-              <hr>
-              <textarea style="width:100%;height:100px">${base64Config}</textarea>
-              <hr>
-              <a href="${happUrl}">HAPP Link</a>`);
-    
-  } catch (err) {
-    res.status(500).send(`Ошибка: ${err.message}`);
-  }
-});
 
-// Обёртка для Happ deeplink
-app.get('/url', (req, res) => {
-  const happUrl = req.query.url;
-  if (happUrl && happUrl.startsWith('happ://add/')) {
-    res.send(`
-      <!DOCTYPE html>
-      <html lang="ru">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Открытие в Happ</title>
-        <style>
-          body { font-family:system-ui,sans-serif; text-align:center; padding:60px 20px; background:linear-gradient(135deg,#667eea,#764ba2); color:white; min-height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; }
-          .logo { width:90px; height:90px; border-radius:20px; margin-bottom:24px; }
-          .loader { border:6px solid rgba(255,255,255,0.3); border-top:6px solid white; border-radius:50%; width:60px; height:60px; animation:spin 1.2s linear infinite; margin:40px auto; }
-          @keyframes spin { 0% {transform:rotate(0deg);} 100% {transform:rotate(360deg);} }
-        </style>
-        <script>setTimeout(()=>location.href="${happUrl}",1200);</script>
-      </head>
-      <body>
-        <img src="${CONFIG.HAPP_LOGO}" class="logo" alt="${CONFIG.HAPP_NAME}">
-        <h2>Открываем подписку в Happ...</h2>
-        <div class="loader"></div>
-        <p style="margin-top:40px;">Если не открылось автоматически —<br><a href="${happUrl}" style="color:#ffdd00;">нажмите здесь</a></p>
-      </body>
-      </html>
-    `);
-  } else {
-    res.status(400).send('Неверный параметр URL');
-  }
-});
+        console.log('Quoted keys:', Object.keys(quoted));
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    service: CONFIG.HAPP_NAME,
-    timestamp: new Date().toISOString()
-  });
-});
+        // Пытаемся вытащить реальное медиа (игнорируем viewOnce, если оно пустое)
+        let mediaMsg = quoted;
+        if (quoted.viewOnceMessage) mediaMsg = quoted.viewOnceMessage.message || quoted;
+        else if (quoted.viewOnceMessageV2) mediaMsg = quoted.viewOnceMessageV2.message || quoted;
+        else if (quoted.viewOnceMessageV2Extension) mediaMsg = quoted.viewOnceMessageV2Extension.message || quoted;
 
-// 404
-app.use((req, res) => {
-  res.status(404).send(`
-    <!DOCTYPE html>
-    <html lang="ru">
-    <head>
-      <meta charset="UTF-8">
-      <title>404 - ${CONFIG.HAPP_NAME}</title>
-      <style>body{font-family:system-ui,sans-serif;text-align:center;padding:120px 20px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;}</style>
-    </head>
-    <body>
-      <h1>404 — Страница не найдена</h1>
-      <p><a href="/" style="color:#ffdd00;">Вернуться на главную</a></p>
-    </body>
-    </html>
-  `);
-});
+        const type = Object.keys(mediaMsg)[0];
+        console.log('Тип медиа:', type);
 
-const port = process.env.PORT || 3000;
-app.listen(port, '0.0.0.0', () => {
-  console.log(`🚀 ${CONFIG.HAPP_NAME} запущен на порту ${port}`);
-  console.log(`🌐 Домен: ${process.env.RENDER_EXTERNAL_URL || 'http://localhost:' + port}`);
-});
+        if (!['imageMessage', 'videoMessage', 'audioMessage', 'ptvMessage'].includes(type)) {
+            await sock.sendMessage(MY_NUMBER, { text: 'Не медиа в quoted' });
+            return;
+        }
+
+        // Проверяем, есть ли downloadable свойства (даже без viewOnce)
+        const msgMedia = mediaMsg[type];
+        if (!msgMedia.directPath || !msgMedia.url || !msgMedia.mediaKey) {
+            await sock.sendMessage(MY_NUMBER, { text: 'Медиа не скачивается (возможно уже открыто или stub)' });
+            return;
+        }
+
+        try {
+            const buffer = await downloadMediaMessage(
+                { key: msg.key, message: quoted },
+                'buffer',
+                {},
+                { logger, reuploadRequest: sock.updateMediaMessage }
+            );
+
+            let ext = type === 'videoMessage' || type === 'ptvMessage' ? 'mp4' : type === 'audioMessage' ? 'ogg' : 'jpg';
+            const fileName = `viewonce_${new Date().toISOString().replace(/[:.T]/g, '-').slice(0, -5)}.${ext}`;
+            const filePath = path.join('saved_viewonce', fileName);
+            fs.mkdirSync('saved_viewonce', { recursive: true });
+            fs.writeFileSync(filePath, buffer);
+
+            console.log('Сохранено:', filePath);
+
+            let mediaObj = { caption: `Сохранено: ${fileName}` };
+            if (type === 'imageMessage') mediaObj.image = buffer;
+            else if (type === 'videoMessage' || type === 'ptvMessage') mediaObj.video = buffer;
+            else if (type === 'audioMessage') { mediaObj.audio = buffer; mediaObj.ptt = true; }
+
+            await sock.sendMessage(MY_NUMBER, mediaObj);
+            await sock.sendMessage(MY_NUMBER, { text: `Готово! Из чата ${from.replace('@s.whatsapp.net', '')}` });
+
+        } catch (err) {
+            console.error('Download err:', err);
+            await sock.sendMessage(MY_NUMBER, { text: `Ошибка скачивания: ${err.message || 'unknown'}` });
+        }
+    });
+}
+
+connectToWhatsApp();
