@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 
-const bot = new Telegraf('YOUR_TELEGRAM_BOT_TOKEN_HERE'); // замени на свой TOKEN от @BotFather
+const bot = new Telegraf('7879704796:AAHlejMeJ7UuxU0ntb0KBBtwGBMVr9GiBkM'); // замени на свой TOKEN от @BotFather
 const logger = pino({ level: 'silent' });
 
 const activeSessions = new Map(); // userIdTg → { sock, phone }
