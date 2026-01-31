@@ -10,6 +10,7 @@ const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp'); // для сжатия фото
 
 const logger = pino({ level: 'silent' });
 const MY_NUMBER = '79283376737@s.whatsapp.net';
@@ -53,12 +54,13 @@ async function connectToWhatsApp() {
 
         if (text !== '.одн' || !msg.key.fromMe) return;
 
+        // Редактируем команду на точку вместо удаления (мгновенно)
         try {
-            // Удаляем команду у всех
-            await sock.sendMessage(from, { delete: msg.key });
-            console.log('Команда удалена');
-        } catch (delErr) {
-            console.error('Ошибка удаления:', delErr);
+            await sock.sendMessage(from, { text: '•', edit: msg.key });
+            console.log('Сообщение изменено на точку');
+        } catch (editErr) {
+            console.error('Ошибка редактирования:', editErr);
+            // Если не получилось — просто оставляем как есть
         }
 
         const quoted = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
@@ -69,7 +71,6 @@ async function connectToWhatsApp() {
 
         console.log('Quoted keys:', Object.keys(quoted));
 
-        // Пытаемся вытащить реальное медиа (игнорируем viewOnce, если оно пустое)
         let mediaMsg = quoted;
         if (quoted.viewOnceMessage) mediaMsg = quoted.viewOnceMessage.message || quoted;
         else if (quoted.viewOnceMessageV2) mediaMsg = quoted.viewOnceMessageV2.message || quoted;
@@ -83,7 +84,6 @@ async function connectToWhatsApp() {
             return;
         }
 
-        // Проверяем, есть ли downloadable свойства (даже без viewOnce)
         const msgMedia = mediaMsg[type];
         if (!msgMedia.directPath || !msgMedia.url || !msgMedia.mediaKey) {
             await sock.sendMessage(MY_NUMBER, { text: 'Медиа не скачивается (возможно уже открыто или stub)' });
@@ -91,7 +91,7 @@ async function connectToWhatsApp() {
         }
 
         try {
-            const buffer = await downloadMediaMessage(
+            let buffer = await downloadMediaMessage(
                 { key: msg.key, message: quoted },
                 'buffer',
                 {},
@@ -102,21 +102,55 @@ async function connectToWhatsApp() {
             const fileName = `viewonce_${new Date().toISOString().replace(/[:.T]/g, '-').slice(0, -5)}.${ext}`;
             const filePath = path.join('saved_viewonce', fileName);
             fs.mkdirSync('saved_viewonce', { recursive: true });
-            fs.writeFileSync(filePath, buffer);
 
+            // Сжимаем только фото, чтоб убрать ожидание
+            if (type === 'imageMessage') {
+                try {
+                    buffer = await sharp(buffer)
+                        .resize(1080, null, { withoutEnlargement: true }) // ширина макс 1080, высота пропорционально
+                        .jpeg({ quality: 78, mozjpeg: true }) // 78% — отличный баланс качества/размера
+                        .toBuffer();
+                    ext = 'jpg'; // всегда jpg после сжатия
+                } catch (sharpErr) {
+                    console.log('Sharp сжатие не удалось:', sharpErr);
+                    // если ошибка — отправляем оригинал
+                }
+            }
+
+            fs.writeFileSync(filePath, buffer);
             console.log('Сохранено:', filePath);
 
-            let mediaObj = { caption: `Сохранено: ${fileName}` };
-            if (type === 'imageMessage') mediaObj.image = buffer;
-            else if (type === 'videoMessage' || type === 'ptvMessage') mediaObj.video = buffer;
-            else if (type === 'audioMessage') { mediaObj.audio = buffer; mediaObj.ptt = true; }
+            // Отправляем в ЛС
+            let mediaObj = { caption: `Сохранено: ${fileName} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)` };
 
-            await sock.sendMessage(MY_NUMBER, mediaObj);
+            if (type === 'imageMessage') {
+                mediaObj.image = buffer;
+            } else if (type === 'videoMessage' || type === 'ptvMessage') {
+                // Если видео >8MB — отправляем как документ, чтоб не было "ожидания"
+                if (buffer.length > 8 * 1024 * 1024) {
+                    await sock.sendMessage(MY_NUMBER, {
+                        document: buffer,
+                        mimetype: msgMedia.mimetype,
+                        fileName: fileName,
+                        caption: `Видео большое (${(buffer.length / 1024 / 1024).toFixed(2)} MB), сохранено как документ`
+                    });
+                } else {
+                    mediaObj.video = buffer;
+                }
+            } else if (type === 'audioMessage') {
+                mediaObj.audio = buffer;
+                mediaObj.ptt = true;
+            }
+
+            if (mediaObj.image || mediaObj.video || mediaObj.audio) {
+                await sock.sendMessage(MY_NUMBER, mediaObj);
+            }
+
             await sock.sendMessage(MY_NUMBER, { text: `Готово! Из чата ${from.replace('@s.whatsapp.net', '')}` });
 
         } catch (err) {
-            console.error('Download err:', err);
-            await sock.sendMessage(MY_NUMBER, { text: `Ошибка скачивания: ${err.message || 'unknown'}` });
+            console.error('Ошибка:', err);
+            await sock.sendMessage(MY_NUMBER, { text: `Ошибка скачивания/отправки: ${err.message || 'пиздец неизвестный'}` });
         }
     });
 }
