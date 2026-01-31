@@ -27,11 +27,11 @@ bot.command('pair', async (ctx) => {
     if (phone.startsWith('8')) phone = '7' + phone.slice(1);
 
     // Лимит на подключения (1 в 24 часа)
-    const lastTime = pairingLimits.get(userId) || 0;
-    if (Date.now() - lastTime < 24 * 60 * 60 * 1000) {
-        return ctx.reply('Лимит: одно подключение в день. Подожди.');
-    }
-    pairingLimits.set(userId, Date.now());
+    //const lastTime = pairingLimits.get(userId) || 0;
+    //if (Date.now() - lastTime < 24 * 60 * 60 * 1000) {
+        //return ctx.reply('Лимит: одно подключение в день. Подожди.');
+    //}
+    //pairingLimits.set(userId, Date.now());
 
     // Папка сессии уникальная для пользователя
     const authFolder = `./auth_${userId}`;
