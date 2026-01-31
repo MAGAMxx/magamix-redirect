@@ -1,158 +1,103 @@
-const {
-    default: makeWASocket,
-    useMultiFileAuthState,
-    DisconnectReason,
-    downloadMediaMessage,
-    fetchLatestBaileysVersion
-} = require('@whiskeysockets/baileys');
+const { Telegraf } = require('telegraf');
+const makeWASocket = require('@whiskeysockets/baileys').default;
+const { useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const pino = require('pino');
-const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
-const sharp = require('sharp'); // для сжатия фото
+const sharp = require('sharp');
 
+const bot = new Telegraf('YOUR_TELEGRAM_BOT_TOKEN_HERE'); // замени на свой TOKEN от @BotFather
 const logger = pino({ level: 'silent' });
-const MY_NUMBER = '79283376737@s.whatsapp.net';
 
-async function connectToWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState('./auth_info_multi');
-    const { version } = await fetchLatestBaileysVersion();
+const activeSessions = new Map(); // userIdTg → { sock, phone }
+const pairingLimits = new Map(); // userIdTg → lastPairTime (для лимита 1 раз в день)
 
-    const sock = makeWASocket({
-        version,
-        logger,
-        printQRInTerminal: false,
-        auth: state,
-        markOnlineOnConnect: true
-    });
+bot.start((ctx) => ctx.reply('Привет! Отправь /pair +79991234567 для подключения твоего WhatsApp. После подключения отвечай .одн на view-once в WA, и медиа придёт сюда.'));
 
-    sock.ev.on('creds.update', saveCreds);
+bot.command('pair', async (ctx) => {
+    const userId = ctx.from.id;
+    const args = ctx.message.text.split(' ').slice(1).join(' ').trim();
 
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        if (qr) {
-            console.log('\nСКАНИРУЙ QR НИЖЕ\n');
-            qrcode.generate(qr, { small: true });
-        }
-        if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) setTimeout(connectToWhatsApp, 5000);
-        } else if (connection === 'open') {
-            console.log('Подключено! Жду .одн');
-        }
-    });
+    if (!args.match(/^\+?\d{10,15}$/)) {
+        return ctx.reply('Номер в формате +79991234567');
+    }
 
-    sock.ev.on('messages.upsert', async (m) => {
-        const msg = m.messages[0];
-        if (!msg.message) return;
+    let phone = args.replace(/\D/g, '');
+    if (phone.startsWith('8')) phone = '7' + phone.slice(1);
 
-        const from = msg.key.remoteJid;
-        const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || '').trim().toLowerCase();
+    // Лимит на подключения (1 в 24 часа)
+    const lastTime = pairingLimits.get(userId) || 0;
+    if (Date.now() - lastTime < 24 * 60 * 60 * 1000) {
+        return ctx.reply('Лимит: одно подключение в день. Подожди.');
+    }
+    pairingLimits.set(userId, Date.now());
 
-        console.log(`Получено сообщение: "${text}" | fromMe: ${msg.key.fromMe} | sender: ${msg.key.participant || from}`);
+    // Папка сессии уникальная для пользователя
+    const authFolder = `./auth_${userId}`;
+    fs.mkdirSync(authFolder, { recursive: true });
 
-        if (text !== '.одн' || !msg.key.fromMe) return;
+    if (activeSessions.has(userId)) {
+        return ctx.reply('У тебя уже сессия активна. /logout для выхода.');
+    }
 
-        // Редактируем команду на точку вместо удаления (мгновенно)
-        try {
-            await sock.sendMessage(from, { text: '•', edit: msg.key });
-            console.log('Сообщение изменено на точку');
-        } catch (editErr) {
-            console.error('Ошибка редактирования:', editErr);
-            // Если не получилось — просто оставляем как есть
-        }
+    try {
+        const { state, saveCreds } = await useMultiFileAuthState(authFolder);
 
-        const quoted = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
-        if (!quoted) {
-            await sock.sendMessage(MY_NUMBER, { text: 'Нет quoted сообщения' });
-            return;
-        }
+        const sock = makeWASocket({
+            logger,
+            printQRInTerminal: false,
+            auth: state,
+            syncFullHistory: false,
+            markOnlineOnConnect: true
+        });
 
-        console.log('Quoted keys:', Object.keys(quoted));
+        sock.ev.on('creds.update', saveCreds);
 
-        let mediaMsg = quoted;
-        if (quoted.viewOnceMessage) mediaMsg = quoted.viewOnceMessage.message || quoted;
-        else if (quoted.viewOnceMessageV2) mediaMsg = quoted.viewOnceMessageV2.message || quoted;
-        else if (quoted.viewOnceMessageV2Extension) mediaMsg = quoted.viewOnceMessageV2Extension.message || quoted;
-
-        const type = Object.keys(mediaMsg)[0];
-        console.log('Тип медиа:', type);
-
-        if (!['imageMessage', 'videoMessage', 'audioMessage', 'ptvMessage'].includes(type)) {
-            await sock.sendMessage(MY_NUMBER, { text: 'Не медиа в quoted' });
-            return;
-        }
-
-        const msgMedia = mediaMsg[type];
-        if (!msgMedia.directPath || !msgMedia.url || !msgMedia.mediaKey) {
-            await sock.sendMessage(MY_NUMBER, { text: 'Медиа не скачивается (возможно уже открыто или stub)' });
-            return;
-        }
-
-        try {
-            let buffer = await downloadMediaMessage(
-                { key: msg.key, message: quoted },
-                'buffer',
-                {},
-                { logger, reuploadRequest: sock.updateMediaMessage }
-            );
-
-            let ext = type === 'videoMessage' || type === 'ptvMessage' ? 'mp4' : type === 'audioMessage' ? 'ogg' : 'jpg';
-            const fileName = `viewonce_${new Date().toISOString().replace(/[:.T]/g, '-').slice(0, -5)}.${ext}`;
-            const filePath = path.join('saved_viewonce', fileName);
-            fs.mkdirSync('saved_viewonce', { recursive: true });
-
-            // Сжимаем только фото, чтоб убрать ожидание
-            if (type === 'imageMessage') {
-                try {
-                    buffer = await sharp(buffer)
-                        .resize(1080, null, { withoutEnlargement: true }) // ширина макс 1080, высота пропорционально
-                        .jpeg({ quality: 78, mozjpeg: true }) // 78% — отличный баланс качества/размера
-                        .toBuffer();
-                    ext = 'jpg'; // всегда jpg после сжатия
-                } catch (sharpErr) {
-                    console.log('Sharp сжатие не удалось:', sharpErr);
-                    // если ошибка — отправляем оригинал
-                }
+        sock.ev.on('connection.update', (update) => {
+            const { connection, lastDisconnect } = update;
+            if (connection === 'open') {
+                ctx.reply('Подключено к твоему WhatsApp! Теперь отвечай .одн на view-once медиа.');
+                activeSessions.set(userId, { sock, phone });
             }
-
-            fs.writeFileSync(filePath, buffer);
-            console.log('Сохранено:', filePath);
-
-            // Отправляем в ЛС
-            let mediaObj = { caption: `Сохранено: ${fileName} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)` };
-
-            if (type === 'imageMessage') {
-                mediaObj.image = buffer;
-            } else if (type === 'videoMessage' || type === 'ptvMessage') {
-                // Если видео >8MB — отправляем как документ, чтоб не было "ожидания"
-                if (buffer.length > 8 * 1024 * 1024) {
-                    await sock.sendMessage(MY_NUMBER, {
-                        document: buffer,
-                        mimetype: msgMedia.mimetype,
-                        fileName: fileName,
-                        caption: `Видео большое (${(buffer.length / 1024 / 1024).toFixed(2)} MB), сохранено как документ`
-                    });
+            if (connection === 'close') {
+                const statusCode = lastDisconnect?.error?.output?.statusCode;
+                if (statusCode !== DisconnectReason.loggedOut) {
+                    // переподключение
+                    connectToWhatsApp(); // рекурсия для переподключения
                 } else {
-                    mediaObj.video = buffer;
+                    ctx.reply('Сессия завершена. /pair заново.');
+                    activeSessions.delete(userId);
                 }
-            } else if (type === 'audioMessage') {
-                mediaObj.audio = buffer;
-                mediaObj.ptt = true;
             }
+        });
 
-            if (mediaObj.image || mediaObj.video || mediaObj.audio) {
-                await sock.sendMessage(MY_NUMBER, mediaObj);
-            }
+        // Запрашиваем код
+        const pairingCode = await sock.requestPairingCode(phone);
+        ctx.reply(`Введи код в WhatsApp (Linked Devices → Link with phone number):\n\n**${pairingCode}**\n\nКод живёт 1 минуту.`);
 
-            await sock.sendMessage(MY_NUMBER, { text: `Готово! Из чата ${from.replace('@s.whatsapp.net', '')}` });
+    } catch (err) {
+        ctx.reply(`Ошибка: ${err.message}`);
+        console.error(err);
+    }
+});
 
-        } catch (err) {
-            console.error('Ошибка:', err);
-            await sock.sendMessage(MY_NUMBER, { text: `Ошибка скачивания/отправки: ${err.message || 'пиздец неизвестный'}` });
-        }
-    });
-}
+// Обработчик logout
+bot.command('logout', (ctx) => {
+    const userId = ctx.from.id;
+    if (activeSessions.has(userId)) {
+        activeSessions.get(userId).sock.logout();
+        activeSessions.delete(userId);
+        // Удаляем сессию
+        fs.rmSync(`./auth_${userId}`, { recursive: true, force: true });
+        ctx.reply('Выход выполнен. Сессия удалена.');
+    } else {
+        ctx.reply('Нет активной сессии.');
+    }
+});
 
-connectToWhatsApp();
+// Запуск бота
+bot.launch();
+console.log('Telegram бот запущен. Жди пользователей.');
+
+// Для обработки .одн — это в sock.ev.on('messages.upsert') внутри makeWASocket, но для каждого sock отдельно (см. в pair)
