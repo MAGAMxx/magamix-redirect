@@ -1,21 +1,19 @@
 {
-  "name": "magamix-vpn",
+  "name": "nodejs",
   "version": "1.0.0",
-  "description": "MAGAMIX VPN Subscription Service - Reality NL Premium",
+  "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "express-rate-limit": "^7.4.0",
-    "node-fetch": "^2.6.7"
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "keywords": ["vpn", "proxy", "subscription", "happ", "magamix", "reality"],
-  "author": "MAGAMIX VPN",
-  "license": "ISC"
+    "@hapi/boom": "^10.0.1",
+    "@types/node": "^22.13.11",
+    "@whiskeysockets/baileys": "^6.7.7",
+    "pino": "^10.3.0",
+    "qrcode-terminal": "^0.12.0"
+  }
 }
